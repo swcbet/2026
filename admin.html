@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SWC-Bet | Admin Pro</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans antialiased pb-20">
+
+    <div id="modal-apostas" class="hidden fixed inset-0 bg-black bg-opacity-80 z-[100] flex items-center justify-center p-4">
+        <div class="bg-gray-800 p-6 rounded-2xl border border-indigo-800 shadow-2xl w-full max-w-md relative flex flex-col max-h-[80vh]">
+            <button onclick="fecharModalApostas()" class="absolute top-3 right-4 text-gray-400 hover:text-white font-bold text-xl">&times;</button>
+            <h2 id="titulo-modal-apostas" class="text-lg font-bold text-indigo-400 mb-4 text-center">🧾 Apostas da Partida</h2>
+            
+            <div class="overflow-y-auto hide-scroll flex-1">
+                <table class="w-full text-left text-[10px]">
+                    <thead>
+                        <tr class="text-gray-400 border-b border-gray-700 uppercase sticky top-0 bg-gray-800 z-10">
+                            <th class="pb-2">Usuário</th>
+                            <th class="pb-2 text-center">Escolha</th>
+                            <th class="pb-2 text-right">Valor</th>
+                            <th class="pb-2 text-right">Odd Pega</th>
+                            <th class="pb-2 text-right">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabela-modal-apostas"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div id="tela-login-admin" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-red-900">
+            <h2 class="text-2xl font-black text-red-500 mb-2 text-center">🔐 SWC-Bet Admin</h2>
+            <p class="text-xs text-gray-400 mb-6 text-center">Controle de Banca e Liquidez</p>
+            <input type="email" id="email-admin" placeholder="E-mail" class="w-full p-3 mb-4 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none">
+            <input type="password" id="senha-admin" placeholder="Senha" class="w-full p-3 mb-6 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none">
+            <button onclick="entrarAdmin()" class="w-full bg-red-600 hover:bg-red-500 py-3 rounded-lg font-bold transition">Entrar</button>
+        </div>
+    </div>
+
+    <div id="painel-admin" class="hidden">
+        <header class="bg-gray-800 p-4 shadow-md sticky top-0 z-50 border-b border-gray-700">
+            <h1 class="text-xl font-black text-red-500 text-center mb-4">⚙️ Painel da Banca</h1>
+            <nav class="flex gap-2 overflow-x-auto hide-scroll pb-1">
+                <button onclick="mudarAbaAdmin('Partidas')" id="btn-Partidas" class="flex-1 min-w-[70px] bg-red-600 py-2 rounded-md font-bold text-xs transition shadow-md">🏆 Partidas</button>
+                <button onclick="mudarAbaAdmin('Financeiro')" id="btn-Financeiro" class="flex-1 min-w-[70px] bg-gray-700 py-2 rounded-md font-bold text-xs transition shadow-md">💰 Finanças</button>
+                <button onclick="mudarAbaAdmin('Historico')" id="btn-Historico" class="flex-1 min-w-[70px] bg-gray-700 py-2 rounded-md font-bold text-xs transition shadow-md">📈 Histórico</button>
+                <button onclick="mudarAbaAdmin('Sistema')" id="btn-Sistema" class="flex-1 min-w-[70px] bg-gray-700 py-2 rounded-md font-bold text-xs transition shadow-md">⚙️ Sistema</button>
+            </nav>
+        </header>
+
+        <main class="max-w-md mx-auto p-4 flex flex-col gap-6">
+
+            <div id="aba-Partidas" class="flex flex-col gap-6">
+                <div class="bg-gray-800 p-6 rounded-xl border border-blue-800 shadow-lg relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
+                    <h2 class="text-lg font-bold text-blue-400 mb-4 text-center">⚔️ Nova Partida</h2>
+                    <select id="fase-partida" class="w-full p-3 mb-4 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none text-sm">
+                        <option value="Grupos">Fase de Grupos</option>
+                        <option value="Oitavas">Oitavas de Final</option>
+                        <option value="Quartas">Quartas de Final</option>
+                        <option value="Semi">Semifinal</option>
+                        <option value="Final">Final</option>
+                    </select>
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="jogA" placeholder="Jogador A" class="flex-1 p-3 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm">
+                        <input type="text" id="jogB" placeholder="Jogador B" class="flex-1 p-3 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm">
+                    </div>
+                    <button onclick="criarPartida()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-bold transition">Criar Rascunho</button>
+                </div>
+
+                <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg">
+                    <h2 class="text-sm font-bold text-gray-300 mb-4 uppercase tracking-widest text-center">⚖️ Ajustar Odds e Abrir</h2>
+                    <div id="lista-preparacao" class="flex flex-col gap-4"></div>
+                </div>
+
+                <div class="bg-gray-800 p-4 rounded-xl border border-purple-800 shadow-lg relative overflow-hidden text-center">
+                    <h2 class="text-sm font-bold text-purple-400 mb-4 uppercase tracking-widest">🏆 Jogos em Aberto</h2>
+                    <div id="lista-encerrar" class="flex flex-col gap-3"></div>
+                </div>
+            </div>
+
+            <div id="aba-Financeiro" class="hidden flex flex-col gap-6 text-center">
+                <div class="bg-gray-800 p-6 rounded-xl border border-yellow-600 shadow-lg">
+                    <h2 class="text-lg font-bold text-yellow-400 mb-4">📊 Livro-Caixa (R$)</h2>
+                    <div class="flex justify-between items-center bg-gray-900 p-4 rounded-lg border border-gray-700">
+                        <div><p class="text-[10px] text-gray-400 uppercase">Entradas</p><p class="text-green-400 font-black text-lg">R$ <span id="caixa-entrada">0,00</span></p></div>
+                        <div class="text-gray-500 text-2xl font-light">-</div>
+                        <div><p class="text-[10px] text-gray-400 uppercase">Saídas</p><p class="text-red-400 font-black text-lg">R$ <span id="caixa-saida">0,00</span></p></div>
+                    </div>
+                    <div class="mt-4">
+                        <p class="text-xs text-gray-400 uppercase">Lucro da Banca</p>
+                        <p class="text-blue-400 font-black text-3xl">R$ <span id="caixa-lucro">0,00</span></p>
+                    </div>
+                </div>
+                <div id="lista-depositos" class="flex flex-col gap-3"></div>
+                <div id="lista-saques" class="flex flex-col gap-3"></div>
+            </div>
+
+            <div id="aba-Historico" class="hidden flex flex-col gap-6">
+                <div class="bg-gray-900 p-4 rounded-xl border border-blue-900 shadow-lg">
+                    <h2 class="text-lg font-bold text-blue-400 mb-4 text-center">📈 Relatório de Partidas</h2>
+                    <p class="text-[10px] text-gray-400 mb-4 text-center">Compare sua projeção inicial com a realidade e audite as apostas.</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-[10px]">
+                            <thead>
+                                <tr class="text-gray-400 border-b border-gray-700 uppercase">
+                                    <th class="pb-2">Partida</th>
+                                    <th class="pb-2 text-center text-gray-300">Vol. Esp</th>
+                                    <th class="pb-2 text-center text-gray-300">Odd Inic.</th>
+                                    <th class="pb-2 text-center text-blue-400">Vol. Real</th>
+                                    <th class="pb-2 text-center text-blue-400">Odd Final</th>
+                                    <th class="pb-2 text-right text-green-400">Lucro</th>
+                                    <th class="pb-2 text-center">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-historico-partidas"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div id="aba-Sistema" class="hidden flex flex-col gap-6">
+                <div class="bg-gray-900 p-4 rounded-xl border border-gray-700 shadow-lg text-center">
+                    <h2 class="text-lg font-bold text-white mb-4">👥 Gestão de Usuários</h2>
+                    <div class="flex gap-2 mb-6 bg-gray-800 p-3 rounded-lg border border-gray-600">
+                        <select id="select-usuario" class="flex-1 p-2 bg-gray-900 border border-gray-600 rounded text-xs text-white"></select>
+                        <input type="number" id="valor-fichas" placeholder="Qtd" class="w-16 p-2 bg-gray-900 border border-gray-600 rounded text-xs text-white">
+                        <button onclick="adicionarFichas()" class="bg-yellow-600 text-white px-3 py-2 rounded text-xs font-bold transition hover:bg-yellow-500">Creditar</button>
+                    </div>
+                    <table class="w-full text-left text-[10px]">
+                        <thead><tr class="text-gray-400 border-b border-gray-700 uppercase"><th class="pb-2">Nome</th><th class="pb-2 text-right">Saldo</th><th class="pb-2 text-center">Ações</th></tr></thead>
+                        <tbody id="tabela-usuarios"></tbody>
+                    </table>
+                </div>
+
+                <div class="bg-gray-900 p-6 rounded-xl border border-red-900 shadow-lg text-center">
+                    <h2 class="text-sm font-bold text-red-500 mb-4 uppercase">⚠️ Zona de Limpeza</h2>
+                    <div class="flex flex-col gap-3">
+                        <button onclick="apagarPartidasFinalizadas()" class="w-full bg-gray-800 hover:bg-red-900 text-gray-300 py-3 rounded-lg text-xs font-bold border border-gray-700">Limpar Jogos Encerrados/Anulados</button>
+                        <button onclick="apagarHistoricoApostas()" class="w-full bg-gray-800 hover:bg-red-900 text-gray-300 py-3 rounded-lg text-xs font-bold border border-gray-700">Limpar Todas as Apostas</button>
+                        <button onclick="apagarLivroCaixa()" class="w-full bg-gray-800 hover:bg-red-900 text-gray-300 py-3 rounded-lg text-xs font-bold border border-gray-700">Zerar Livro-Caixa (R$)</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <style>.hide-scroll::-webkit-scrollbar { display: none; } .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }</style>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyC2GLJVb-sNki-yG-GcJib2EZlp4lWPynQ", authDomain: "swc-bet.firebaseapp.com",
+            projectId: "swc-bet", storageBucket: "swc-bet.firebasestorage.app",
+            messagingSenderId: "701279276247", appId: "1:701279276247:web:5d7b851b300c1056d67492", measurementId: "G-N16WDY7WQC"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+        const OVERROUND = 1.10;
+        
+        let mapaUsuarios = {};
+
+        function entrarAdmin() {
+            const email = document.getElementById('email-admin').value.trim(), senha = document.getElementById('senha-admin').value.trim();
+            if(!email || !senha) return alert("Preencha e-mail e senha.");
+            auth.signInWithEmailAndPassword(email, senha).catch(err => alert("Erro: " + err.message));
+        }
+
+// 🔒 LISTA DE E-MAILS DOS CHEFES DA BANCA
+        // Coloque aqui o e-mail exato que você e seu amigo usaram para criar a conta no site da galera
+        const EMAILS_ADMINS = ["gustavo.giovanardi10@gmail.com", "brunoogrobin@gmail.com"];
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                // O sistema confere se o e-mail do cara está na lista VIP
+                if (EMAILS_ADMINS.includes(user.email)) {
+                    document.getElementById('tela-login-admin').classList.add('hidden');
+                    document.getElementById('painel-admin').classList.remove('hidden');
+                    iniciarPainelAdmin(); 
+                } else {
+                    // Se não for admin, ele toma um chute e é deslogado na hora
+                    alert("⛔ ACESSO NEGADO! Você não tem permissão para entrar na Banca.");
+                    auth.signOut();
+                }
+            }
+        });
+
+        function mudarAbaAdmin(aba) {
+            ['Partidas', 'Financeiro', 'Historico', 'Sistema'].forEach(id => {
+                document.getElementById(`aba-${id}`).classList.add('hidden');
+                document.getElementById(`btn-${id}`).classList.replace('bg-red-600', 'bg-gray-700');
+            });
+            document.getElementById(`aba-${aba}`).classList.remove('hidden');
+            document.getElementById(`btn-${aba}`).classList.replace('bg-gray-700', 'bg-red-600');
+        }
+
+        function iniciarPainelAdmin() {
+            // FINANCEIRO
+            function atualizarBalanco() {
+                let ent = 0, sai = 0;
+                db.collection('depositos').where('status', '==', 'aprovado').onSnapshot(snap => {
+                    ent = 0; snap.forEach(d => ent += d.data().reais); renderBalanco(ent, sai);
+                });
+                db.collection('saques').where('status', '==', 'pago').onSnapshot(snap => {
+                    sai = 0; snap.forEach(d => sai += d.data().reais); renderBalanco(ent, sai);
+                });
+            }
+            function renderBalanco(e, s) {
+                const f = (v) => v.toFixed(2).replace('.', ',');
+                document.getElementById('caixa-entrada').innerText = f(e); document.getElementById('caixa-saida').innerText = f(s); document.getElementById('caixa-lucro').innerText = f(e - s);
+            }
+            atualizarBalanco();
+
+            db.collection('depositos').where('status', '==', 'pendente').onSnapshot(snap => {
+                const l = document.getElementById('lista-depositos'); l.innerHTML = '';
+                snap.forEach(doc => {
+                    const d = doc.data();
+                    l.innerHTML += `<div class="bg-gray-900 p-3 rounded border border-gray-700 flex justify-between items-center mb-2"><div><p class="font-bold text-sm">${d.nome}</p><p class="text-green-400 text-xs font-bold">R$ ${d.reais} ➔ ${d.fichas} F</p></div><button onclick="aprovarDeposito('${doc.id}', '${d.uid}', ${d.fichas})" class="bg-green-600 px-4 py-1 rounded text-xs font-bold shadow">Aprovar</button></div>`;
+                });
+            });
+
+            db.collection('saques').where('status', '==', 'pendente').onSnapshot(snap => {
+                const l = document.getElementById('lista-saques'); l.innerHTML = '';
+                snap.forEach(doc => {
+                    const s = doc.data();
+                    l.innerHTML += `
+                        <div class="bg-gray-900 p-3 rounded border border-gray-700 mb-2 shadow-md">
+                            <p class="font-bold text-sm">${s.nome}</p>
+                            <p class="text-red-400 text-xs font-bold mb-2">Pagar R$ ${s.reais.toFixed(2)}</p>
+                            <div class="bg-gray-800 p-2 rounded flex justify-between items-center border border-gray-600 mb-2">
+                                <code class="text-[9px] text-green-400 break-all font-mono">${s.chavePix || 'Sem chave'}</code>
+                                <button onclick="navigator.clipboard.writeText('${s.chavePix}').then(() => alert('Copiada!'))" class="bg-gray-700 px-2 py-1 rounded text-[9px]">Copiar</button>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="recusarSaque('${doc.id}', '${s.uid}', ${s.fichas})" class="flex-1 bg-gray-700 py-1 rounded text-xs font-bold">❌ Recusar</button>
+                                <button onclick="marcarSaquePago('${doc.id}')" class="flex-1 bg-red-700 py-1 rounded text-xs font-bold">✅ Pago</button>
+                            </div>
+                        </div>`;
+                });
+            });
+
+            // USUÁRIOS
+            db.collection('usuarios').onSnapshot(snap => {
+                const s = document.getElementById('select-usuario'), t = document.getElementById('tabela-usuarios');
+                s.innerHTML = '<option value="">Escolher...</option>'; t.innerHTML = '';
+                snap.forEach(doc => {
+                    const u = doc.data();
+                    mapaUsuarios[doc.id] = u.nome; 
+                    
+                    s.innerHTML += `<option value="${doc.id}">${u.nome}</option>`;
+                    t.innerHTML += `<tr class="border-b border-gray-800"><td class="py-3 font-bold text-white">${u.nome}</td><td class="py-3 text-yellow-400 text-right font-mono">${u.saldo} F</td><td class="py-3 text-center"><button onclick="excluirConta('${doc.id}', '${u.nome}')" class="bg-red-900/40 text-red-500 px-2 py-1 rounded text-[8px] font-black uppercase hover:bg-red-700 hover:text-white border border-red-900 transition">Excluir</button></td></tr>`;
+                });
+            });
+
+            // PARTIDAS RASCUNHO
+            db.collection('partidas').where('status', '==', 'preparacao').onSnapshot(snap => {
+                const l = document.getElementById('lista-preparacao'); l.innerHTML = '';
+                snap.forEach(doc => {
+                    const p = doc.data(), id = doc.id, od = simularOdd(p.poolA, p.poolB);
+                    l.innerHTML += `
+                        <div class="bg-gray-900 p-4 rounded-lg border border-gray-700 mb-2">
+                            <p class="text-xs font-bold text-blue-400 uppercase mb-2">${p.fase}: ${p.jogA} vs ${p.jogB}</p>
+                            <div class="bg-gray-800 p-2 rounded mb-3 border border-gray-700 flex gap-2">
+                                <input type="number" id="vol-${id}" placeholder="Vol. Esperado" class="flex-1 p-2 bg-gray-900 rounded text-[10px] outline-none" value="${p.volEsperado || ''}">
+                                <input type="number" id="prob-${id}" placeholder="Chance A %" class="w-16 p-2 bg-gray-900 rounded text-[10px] outline-none">
+                                <button onclick="assistente('${id}')" class="bg-blue-600 px-2 rounded text-[9px] font-bold">GERAR</button>
+                            </div>
+                            <div class="flex gap-2 text-[10px] mb-3">
+                                <div class="flex-1">Peso A (${od.oA})<input type="number" id="pA-${id}" value="${p.poolA}" class="w-full bg-gray-800 p-2 rounded mt-1 outline-none font-mono"></div>
+                                <div class="flex-1">Peso B (${od.oB})<input type="number" id="pB-${id}" value="${p.poolB}" class="w-full bg-gray-800 p-2 rounded mt-1 outline-none font-mono"></div>
+                                <div class="flex-1 text-yellow-400">Risco Limite<input type="number" id="risco-${id}" value="${p.risco || 0}" class="w-full bg-gray-800 p-2 rounded mt-1 outline-none text-yellow-400 border border-yellow-900 font-mono"></div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="deletarRascunho('${id}', '${p.jogA}', '${p.jogB}')" class="bg-gray-800 px-3 py-2 rounded text-[10px] text-red-500 border border-red-900">Excluir</button>
+                                <button onclick="salvarPesos('${id}')" class="flex-1 bg-gray-700 py-2 rounded text-[10px] font-bold">Salvar</button>
+                                <button onclick="abrirApostas('${id}')" class="flex-1 bg-green-600 py-2 rounded text-[10px] font-bold">ABRIR</button>
+                            </div>
+                        </div>`;
+                });
+            });
+
+            // PARTIDAS ABERTAS E RELATÓRIO
+            db.collection('partidas').onSnapshot(snap => {
+                const lEncerrar = document.getElementById('lista-encerrar'); lEncerrar.innerHTML = '';
+                const lHistorico = document.getElementById('tabela-historico-partidas'); lHistorico.innerHTML = '';
+                
+                let temHistorico = false;
+
+                snap.forEach(doc => {
+                    const p = doc.data();
+                    
+                    if (p.status === 'aberta') {
+                        lEncerrar.innerHTML += `
+                            <div class="bg-gray-900 p-3 rounded-xl border border-gray-700 mb-2 text-center">
+                                <p class="text-sm font-bold mb-3">${p.jogA} x ${p.jogB}</p>
+                                <div class="flex gap-2 mb-2">
+                                    <button onclick="encerrarPartida('${doc.id}', 'A', '${p.jogA}')" class="flex-1 bg-purple-700 py-2 rounded font-bold text-xs uppercase transition hover:bg-purple-600">Venceu ${p.jogA}</button>
+                                    <button onclick="encerrarPartida('${doc.id}', 'B', '${p.jogB}')" class="flex-1 bg-purple-700 py-2 rounded font-bold text-xs uppercase transition hover:bg-purple-600">Venceu ${p.jogB}</button>
+                                </div>
+                                <button onclick="cancelarPartida('${doc.id}', '${p.jogA}', '${p.jogB}')" class="w-full bg-red-900 hover:bg-red-800 py-2 rounded text-[10px] font-black uppercase text-red-100 transition border border-red-700">⚠️ Anular Jogo e Estornar</button>
+                            </div>`;
+                    }
+
+                    if (p.status === 'aberta' || p.status === 'finalizada' || p.status === 'anulada') {
+                        temHistorico = true;
+                        const oddAtual = simularOdd(p.poolA, p.poolB);
+                        const volRecebido = (p.realA || 0) + (p.realB || 0);
+                        
+                        let statusBadge = '';
+                        if (p.status === 'finalizada') statusBadge = `<span class="text-yellow-400">Final (${p.vencedor})</span>`;
+                        else if (p.status === 'anulada') statusBadge = `<span class="text-red-500 font-bold">Anulada</span>`;
+                        else statusBadge = `<span class="text-green-400">Ao Vivo</span>`;
+                        
+                        let lucroHtml = '<span class="text-gray-500">Ao Vivo</span>';
+                        if (p.status === 'finalizada') {
+                            const lucro = p.lucroCasa || 0;
+                            if (lucro > 0) lucroHtml = `<span class="text-green-400 font-bold">+${lucro}</span>`;
+                            else if (lucro < 0) lucroHtml = `<span class="text-red-400 font-bold">${lucro}</span>`;
+                            else lucroHtml = `<span class="text-gray-400 font-bold">0</span>`;
+                        } else if (p.status === 'anulada') {
+                            lucroHtml = `<span class="text-red-500 font-bold">Estornada</span>`;
+                        }
+
+                        lHistorico.innerHTML += `
+                            <tr class="border-b border-gray-800 hover:bg-gray-800 transition">
+                                <td class="py-3"><span class="font-bold text-white">${p.jogA} x ${p.jogB}</span><br>${statusBadge}</td>
+                                <td class="py-3 text-center text-gray-400 font-mono">${p.volEsperado || '-'}</td>
+                                <td class="py-3 text-center text-gray-400 font-mono">${p.oddInicialA || '-'} / ${p.oddInicialB || '-'}</td>
+                                <td class="py-3 text-center font-bold text-blue-400 font-mono">${volRecebido}</td>
+                                <td class="py-3 text-center font-bold text-white font-mono">${oddAtual.oA} / ${oddAtual.oB}</td>
+                                <td class="py-3 text-right font-mono text-sm">${lucroHtml}</td>
+                                <td class="py-3 text-center">
+                                    <button onclick="verApostas('${doc.id}', '${p.jogA}', '${p.jogB}')" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded text-[9px] font-bold text-white uppercase shadow-md transition">Apostas</button>
+                                </td>
+                            </tr>`;
+                    }
+                });
+                
+                if(!temHistorico) lHistorico.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-gray-500">Nenhum histórico disponível.</td></tr>';
+            });
+        }
+
+        // ===================== LÓGICA DO MODAL DE APOSTAS =====================
+        function fecharModalApostas() {
+            document.getElementById('modal-apostas').classList.add('hidden');
+        }
+
+        async function verApostas(partidaId, jogA, jogB) {
+            document.getElementById('titulo-modal-apostas').innerText = `🧾 Apostas: ${jogA} x ${jogB}`;
+            
+            const tb = document.getElementById('tabela-modal-apostas');
+            tb.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Buscando dados...</td></tr>';
+            document.getElementById('modal-apostas').classList.remove('hidden');
+
+            try {
+                // Fetch simples (sem o orderBy) para não travar no erro de Índice do Firebase
+                const snap = await db.collection('apostas').where('partidaId', '==', partidaId).get();
+                tb.innerHTML = '';
+                
+                if(snap.empty) {
+                    tb.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Ninguém apostou nesta partida ainda.</td></tr>';
+                    return;
+                }
+
+                // O código Javascript faz a organização por data em memória na velocidade da luz
+                let apostas = [];
+                snap.forEach(doc => apostas.push(doc.data()));
+                apostas.sort((a, b) => b.data - a.data);
+
+                apostas.forEach(a => {
+                    const nomeUser = mapaUsuarios[a.uid] || 'Desconhecido';
+                    
+                    let statusHtml = '<span class="text-gray-400">Pendente</span>';
+                    if(a.resultado === 'ganhou') statusHtml = `<span class="text-green-400 font-bold">+${a.premio}</span>`;
+                    else if(a.resultado === 'perdeu') statusHtml = `<span class="text-red-400">Perdeu</span>`;
+                    else if(a.resultado === 'anulada') statusHtml = `<span class="text-red-500 font-bold">Estornada</span>`;
+
+                    tb.innerHTML += `
+                        <tr class="border-b border-gray-700 hover:bg-gray-700 transition">
+                            <td class="py-3 font-bold text-white">${nomeUser}</td>
+                            <td class="py-3 text-center text-yellow-400 font-bold">${a.escolhaNome}</td>
+                            <td class="py-3 text-right font-mono">${a.valor} F</td>
+                            <td class="py-3 text-right font-mono">${a.oddTravada}</td>
+                            <td class="py-3 text-right">${statusHtml}</td>
+                        </tr>`;
+                });
+            } catch(e) {
+                tb.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Erro: ${e.message}</td></tr>`;
+            }
+        }
+
+        // --- FUNÇÕES DE AÇÃO ---
+        async function cancelarPartida(id, jogA, jogB) {
+            const resp = prompt(`⚠️ EMERGÊNCIA!\nIsso anulará o jogo [${jogA} x ${jogB}] e devolverá todas as fichas.\n\nDigite ANULAR para confirmar:`);
+            if(resp !== 'ANULAR') return alert('Ação cancelada.');
+            
+            const batch = db.batch();
+            const asSnap = await db.collection('apostas').where('partidaId', '==', id).get();
+            asSnap.forEach(doc => {
+                const a = doc.data();
+                batch.update(db.collection('usuarios').doc(a.uid), {
+                    saldo: firebase.firestore.FieldValue.increment(a.valor),
+                    totalApostado: firebase.firestore.FieldValue.increment(-a.valor)
+                });
+                batch.update(doc.ref, { resultado: 'anulada' });
+            });
+            batch.update(db.collection('partidas').doc(id), { status: 'anulada', lucroCasa: 0 });
+            await batch.commit();
+            alert("Partida anulada e fichas devolvidas com sucesso.");
+        }
+
+        async function deletarRascunho(id, jogA, jogB) {
+            if(confirm(`Deseja apagar o rascunho de ${jogA} vs ${jogB}?`)) {
+                await db.collection('partidas').doc(id).delete();
+            }
+        }
+
+        function aprovarDeposito(docId, uid, fichas) {
+            const b = db.batch(); b.update(db.collection('usuarios').doc(uid), { saldo: firebase.firestore.FieldValue.increment(fichas) });
+            b.update(db.collection('depositos').doc(docId), { status: 'aprovado' }); b.commit();
+        }
+        function marcarSaquePago(id) { if(confirm('PIX enviado para o jogador?')) db.collection('saques').doc(id).update({ status: 'pago' }); }
+        function recusarSaque(docId, uid, fichas) {
+            if(confirm(`Devolver ${fichas} fichas para o usuário?`)) {
+                const b = db.batch(); b.update(db.collection('usuarios').doc(uid), { saldo: firebase.firestore.FieldValue.increment(fichas) });
+                b.update(db.collection('saques').doc(docId), { status: 'recusado' }); b.commit();
+            }
+        }
+        function adicionarFichas() {
+            const uid = document.getElementById('select-usuario').value, v = parseInt(document.getElementById('valor-fichas').value);
+            if(uid && v) db.collection('usuarios').doc(uid).update({ saldo: firebase.firestore.FieldValue.increment(v) });
+            document.getElementById('valor-fichas').value = '';
+        }
+        async function excluirConta(uid, nome) { 
+            const resp = prompt(`⚠️ ATENÇÃO!\nExcluir a conta de ${nome}?\nDigite APAGAR para confirmar:`);
+            if (resp === 'APAGAR') {
+                await db.collection('usuarios').doc(uid).delete(); 
+                alert('Conta excluída.');
+            }
+        }
+
+        function simularOdd(pA, pB) {
+            let t = pA + pB; if(t === 0) return { oA: 0, oB: 0 };
+            return { oA: Math.max(1.01, (t / (pA * OVERROUND))).toFixed(2), oB: Math.max(1.01, (t / (pB * OVERROUND))).toFixed(2) };
+        }
+        function criarPartida() {
+            const f = document.getElementById('fase-partida').value, a = document.getElementById('jogA').value, b = document.getElementById('jogB').value;
+            if(!a || !b) return;
+            db.collection('partidas').add({ fase: f, jogA: a, jogB: b, poolA: 100, poolB: 100, risco: 500, realA: 0, realB: 0, status: 'preparacao' });
+            document.getElementById('jogA').value = ''; document.getElementById('jogB').value = '';
+        }
+        
+        function assistente(id) {
+            const v = parseInt(document.getElementById(`vol-${id}`).value) || 0, p = parseInt(document.getElementById(`prob-${id}`).value) || 50;
+            if(v < 100) return alert("Volume muito baixo para simulação.");
+            
+            const phant = v * 0.2;
+            const pA = Math.floor(phant * (p/100));
+            const pB = Math.floor(phant * ((100-p)/100));
+            const ris = Math.floor(v * 0.15); 
+            
+            document.getElementById(`pA-${id}`).value = pA; 
+            document.getElementById(`pB-${id}`).value = pB; 
+            document.getElementById(`risco-${id}`).value = ris;
+            salvarPesos(id);
+        }
+
+        function salvarPesos(id) { 
+            const volInp = document.getElementById(`vol-${id}`) ? parseInt(document.getElementById(`vol-${id}`).value) : 0;
+            db.collection('partidas').doc(id).update({ 
+                poolA: parseInt(document.getElementById(`pA-${id}`).value), 
+                poolB: parseInt(document.getElementById(`pB-${id}`).value), 
+                risco: parseInt(document.getElementById(`risco-${id}`).value),
+                volEsperado: volInp || 0
+            }); 
+        }
+
+        async function abrirApostas(id) { 
+            const doc = await db.collection('partidas').doc(id).get();
+            const p = doc.data();
+            const odds = simularOdd(p.poolA, p.poolB);
+            
+            db.collection('partidas').doc(id).update({ 
+                status: 'aberta',
+                oddInicialA: odds.oA,
+                oddInicialB: odds.oB
+            }); 
+        }
+
+        async function encerrarPartida(id, lado, nome) {
+            if(!confirm(`Pagar vitória de ${nome}?`)) return;
+            const batch = db.batch(); 
+            let ganhos = {}; 
+            let totalPagoAosVencedores = 0;
+
+            const pSnap = await db.collection('partidas').doc(id).get();
+            const pData = pSnap.data();
+            const volumeRecebidoReal = (pData.realA || 0) + (pData.realB || 0);
+
+            const asSnap = await db.collection('apostas').where('partidaId', '==', id).get();
+            asSnap.forEach(doc => {
+                const a = doc.data();
+                if(a.escolha === lado) {
+                    const pr = Math.floor(a.valor * parseFloat(a.oddTravada));
+                    ganhos[a.uid] = (ganhos[a.uid] || 0) + pr;
+                    totalPagoAosVencedores += pr;
+                    batch.update(doc.ref, { resultado: 'ganhou', premio: pr });
+                } else { batch.update(doc.ref, { resultado: 'perdeu' }); }
+            });
+
+            for(let u in ganhos) batch.update(db.collection('usuarios').doc(u), { saldo: firebase.firestore.FieldValue.increment(ganhos[u]) });
+            
+            const lucroParaABanca = volumeRecebidoReal - totalPagoAosVencedores;
+
+            batch.update(db.collection('partidas').doc(id), { 
+                status: 'finalizada', 
+                vencedor: lado,
+                lucroCasa: lucroParaABanca 
+            });
+            await batch.commit();
+        }
+
+        // --- FUNÇÕES DE LIMPEZA GERAL COM TRAVA DE SEGURANÇA ---
+        async function apagarPartidasFinalizadas() { 
+            const resp = prompt('⚠️ ATENÇÃO!\nIsso apagará a exibição de resultados.\n\nDigite APAGAR para confirmar:');
+            if(resp !== 'APAGAR') return alert('Ação cancelada.');
+            
+            const batch = db.batch();
+            const s1 = await db.collection('partidas').where('status', '==', 'finalizada').get(); 
+            s1.forEach(d => batch.delete(d.ref)); 
+            const s2 = await db.collection('partidas').where('status', '==', 'anulada').get(); 
+            s2.forEach(d => batch.delete(d.ref)); 
+            
+            await batch.commit(); 
+            alert('Partidas apagadas.');
+        }
+
+        async function apagarHistoricoApostas() { 
+            const resp = prompt('⚠️ PERIGO MÁXIMO!\nIsso apagará TODO o histórico de apostas.\n\nDigite APAGAR para confirmar:');
+            if(resp !== 'APAGAR') return alert('Ação cancelada.');
+
+            const s = await db.collection('apostas').get(); 
+            const batch = db.batch(); s.forEach(d => batch.delete(d.ref)); await batch.commit(); 
+            alert('Histórico de apostas limpo.');
+        }
+
+        async function apagarLivroCaixa() {
+            const resp = prompt('⚠️ ZERAR CAIXA?\n\nDigite ZERAR para confirmar:');
+            if(resp !== 'ZERAR') return alert('Ação cancelada.');
+
+            const batch = db.batch();
+            const d = await db.collection('depositos').get(); d.forEach(doc => batch.delete(doc.ref));
+            const s = await db.collection('saques').get(); s.forEach(doc => batch.delete(doc.ref));
+            await batch.commit();
+            alert('Livro-caixa zerado.');
+        }
+    </script>
+</body>
+</html>
