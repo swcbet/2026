@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SWC-Bet | Torneio de Sinuca</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-900 text-white font-sans antialiased pb-20">
+
+    <div id="modal-pix" class="hidden fixed inset-0 bg-black bg-opacity-80 z-[100] flex items-center justify-center p-4">
+        <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-2xl w-full max-w-sm text-center relative">
+            <button onclick="fecharPix()" class="absolute top-3 right-4 text-gray-400 hover:text-white font-bold text-xl">&times;</button>
+            <h2 class="text-xl font-bold text-yellow-400 mb-2">📥 Comprar Fichas</h2>
+            
+            <div class="bg-gray-900 p-3 rounded-lg border border-gray-600 mb-2 flex flex-col gap-2">
+                <span class="text-[10px] text-gray-400 uppercase font-bold">Chave PIX (E-mail)</span>
+                <div class="flex items-center justify-between">
+                    <code id="chave-pix" class="text-green-400 font-mono text-sm break-all">245561f2-8127-47b3-96cb-c819b94fd4e5</code>
+                    <button onclick="copiarPix()" class="ml-2 bg-gray-700 hover:bg-gray-600 px-3 py-1 rounded text-xs font-bold text-white border border-gray-500">Copiar</button>
+                </div>
+            </div>
+            
+            <p class="text-xs text-yellow-400 font-black mb-4">Cotação: R$ 1,00 = 100 Fichas</p>
+
+            <div class="border-t border-gray-700 pt-4 text-left">
+                <label class="text-xs text-gray-400 block mb-1">Qual valor em Reais você enviou?</label>
+                <input type="number" id="valor-deposito-reais" placeholder="Ex: 50" class="w-full p-3 mb-2 bg-gray-900 border border-gray-600 rounded text-white outline-none" oninput="calcularFichasDeposito()">
+                
+                <p class="text-xs text-gray-300 mb-4">Fichas a receber: <span id="fichas-a-receber" class="font-black text-green-400 text-lg">0</span></p>
+                
+                <button onclick="solicitarDeposito()" class="w-full bg-green-600 hover:bg-green-500 py-3 rounded-lg font-bold transition">Confirmar Pagamento</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tela-login" class="min-h-screen flex items-center justify-center p-4">
+        <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-gray-700">
+            <h2 class="text-2xl font-bold text-green-400 mb-6 text-center">SWC-Bet</h2>
+            <input type="text" id="nome" placeholder="Nome Completo" class="w-full p-3 mb-4 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none">
+            <input type="email" id="email" placeholder="E-mail" class="w-full p-3 mb-4 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none">
+            <input type="password" id="senha" placeholder="Senha" class="w-full p-3 mb-6 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none">
+            <div class="flex gap-3">
+                <button onclick="fazerLogin()" class="flex-1 bg-gray-700 hover:bg-gray-600 py-3 rounded-lg font-bold border border-gray-600 transition">Entrar</button>
+                <button onclick="criarConta()" class="flex-1 bg-green-600 hover:bg-green-500 py-3 rounded-lg font-bold transition">Criar Conta</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="tela-principal" class="hidden">
+        <header class="bg-gray-800 p-4 shadow-md sticky top-0 z-50 flex justify-between items-center border-b border-gray-700">
+            <h1 class="text-xl font-bold text-green-400">🎱 SWC-Bet</h1>
+            <div class="text-right flex flex-col items-end">
+                <p id="nome-user" class="text-[10px] text-gray-400 font-bold uppercase mb-1"></p>
+                <div class="flex items-center gap-2">
+                    <button onclick="mostrarPix()" class="text-[10px] bg-yellow-600 hover:bg-yellow-500 px-2 py-1 rounded text-white font-bold shadow-sm transition">📥 Depositar</button>
+                    <button onclick="pedirSaque()" class="text-[10px] bg-gray-700 hover:bg-gray-600 px-2 py-1 rounded text-white shadow-sm border border-gray-500 transition">💸 Sacar</button>
+                    <p class="text-yellow-400 font-bold text-lg ml-1"><span id="saldo-user">0</span></p>
+                </div>
+            </div>
+        </header>
+
+        <nav class="flex overflow-x-auto bg-gray-800 p-2 gap-2 shadow-md hide-scroll" id="menu-tabs">
+            <button onclick="mudarFase('Grupos')" class="flex-1 min-w-[70px] bg-gray-700 py-2 rounded-md font-bold text-xs transition tab-btn">Grupos</button>
+            <button onclick="mudarFase('Oitavas')" class="flex-1 min-w-[70px] bg-green-600 py-2 rounded-md font-bold text-xs transition tab-btn">Oitavas</button>
+            <button onclick="mudarFase('Quartas')" class="flex-1 min-w-[70px] bg-gray-700 py-2 rounded-md font-bold text-xs transition tab-btn">Quartas</button>
+            <button onclick="mudarFase('Semi')" class="flex-1 min-w-[70px] bg-gray-700 py-2 rounded-md font-bold text-xs transition tab-btn">Semi</button>
+            <button onclick="mudarFase('Final')" class="flex-1 min-w-[70px] bg-gray-700 py-2 rounded-md font-bold text-xs transition tab-btn">Final</button>
+            <button onclick="mostrarHistorico()" class="flex-1 min-w-[70px] bg-blue-600 py-2 rounded-md font-bold text-xs transition tab-btn" id="btn-historico">Histórico</button>
+        </nav>
+
+        <main id="container-principal" class="p-4 max-w-md mx-auto"></main>
+    </div>
+
+    <style>.hide-scroll::-webkit-scrollbar { display: none; } .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }</style>
+
+    <script>
+        const firebaseConfig = {
+            apiKey: "AIzaSyC2GLJVb-sNki-yG-GcJib2EZlp4lWPynQ", authDomain: "swc-bet.firebaseapp.com",
+            projectId: "swc-bet", storageBucket: "swc-bet.firebasestorage.app",
+            messagingSenderId: "701279276247", appId: "1:701279276247:web:5d7b851b300c1056d67492", measurementId: "G-N16WDY7WQC"
+        };
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.firestore();
+
+        // CONFIGURAÇÕES DE ALTO VOLUME E ALTA PROTEÇÃO
+        const TAXA_CASA = 0.20; // 20% de fatia da casa
+        const OVERROUND = 1.10; 
+        const RISCO_CASA = 2000; // Padrão se o admin não gerar pelo assistente
+        
+        let faseAtual = 'Oitavas', dadosUsuario = null, unsubscribePartidas = null, unsubscribeHistorico = null;
+
+        function mostrarPix() { document.getElementById('modal-pix').classList.remove('hidden'); }
+        function fecharPix() { document.getElementById('modal-pix').classList.add('hidden'); }
+        function copiarPix() {
+            navigator.clipboard.writeText("245561f2-8127-47b3-96cb-c819b94fd4e5").then(() => alert("Chave PIX copiada!"));
+        }
+
+        function calcularFichasDeposito() {
+            let reais = parseFloat(document.getElementById('valor-deposito-reais').value) || 0;
+            document.getElementById('fichas-a-receber').innerText = (reais * 100).toLocaleString('pt-BR');
+        }
+
+        function solicitarDeposito() {
+            let reais = parseFloat(document.getElementById('valor-deposito-reais').value);
+            if(!reais || reais <= 0) return alert("Digite um valor válido em Reais.");
+            
+            let fichas = reais * 100;
+            
+            db.collection('depositos').add({
+                uid: auth.currentUser.uid, nome: dadosUsuario.nome,
+                reais: reais, fichas: fichas, status: 'pendente', data: new Date().getTime()
+            }).then(() => {
+                alert("✅ Pedido enviado! O sistema vai liberar suas fichas assim que a banca confirmar o PIX.");
+                fecharPix();
+                document.getElementById('valor-deposito-reais').value = '';
+                document.getElementById('fichas-a-receber').innerText = '0';
+            }).catch(e => alert("Erro: " + e));
+        }
+
+        function criarConta() {
+            const nome = document.getElementById('nome').value.trim(), email = document.getElementById('email').value.trim(), senha = document.getElementById('senha').value.trim();
+            if (!nome || !email || !senha) return alert("Preencha todos os campos.");
+            auth.createUserWithEmailAndPassword(email, senha).then((cred) => {
+                db.collection('usuarios').doc(cred.user.uid).set({ nome: nome, saldo: 0, totalApostado: 0 }).then(() => alert("Conta criada!"));
+            }).catch(err => alert("Erro: " + err.message));
+        }
+
+        function fazerLogin() {
+            const email = document.getElementById('email').value.trim(), senha = document.getElementById('senha').value.trim();
+            if (!email || !senha) return alert("Preencha tudo.");
+            auth.signInWithEmailAndPassword(email, senha).catch(err => alert("Erro ao entrar."));
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('tela-login').classList.add('hidden');
+                document.getElementById('tela-principal').classList.remove('hidden');
+                
+                db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
+                    if (doc.exists) {
+                        dadosUsuario = doc.data();
+                        document.getElementById('nome-user').innerText = dadosUsuario.nome;
+                        document.getElementById('saldo-user').innerText = dadosUsuario.saldo;
+                    } else {
+                        const nomeNovo = prompt("⚠️ O sistema detectou que a sua conta passou por um reset.\n\nDigite seu Nome novamente para recriar o seu perfil:") || "Usuário Readmitido";
+                        db.collection('usuarios').doc(user.uid).set({ 
+                            nome: nomeNovo, 
+                            saldo: 0, 
+                            totalApostado: 0 
+                        });
+                    }
+                });
+                mudarFase('Grupos');
+            }
+        });
+
+        function pedirSaque() {
+            const volume = dadosUsuario.totalApostado || 0;
+            if (volume < 200) return alert(`⚠️ Saque Bloqueado!\nAposte no mínimo 200 fichas para liberar o saque. (Progresso: ${volume}/200)`);
+            
+            let valorFichas = parseInt(prompt(`Saldo: ${dadosUsuario.saldo} Fichas\n\nQuantas fichas você quer sacar?\nLembrete: 100 Fichas viram R$ 1,00 na sua conta.`));
+            if (!valorFichas || valorFichas <= 0 || valorFichas > dadosUsuario.saldo) return alert("Valor inválido ou saldo insuficiente.");
+
+            let chavePix = prompt("💸 Digite a sua Chave PIX para receber o pagamento:");
+            if (!chavePix || chavePix.trim() === "") return alert("Saque cancelado. Você precisa informar uma Chave PIX para receber.");
+
+            let reaisReceber = valorFichas / 100;
+
+            db.runTransaction(async (transaction) => {
+                const userRef = db.collection('usuarios').doc(auth.currentUser.uid);
+                transaction.update(userRef, { saldo: dadosUsuario.saldo - valorFichas });
+            }).then(() => {
+                db.collection('saques').add({
+                    uid: auth.currentUser.uid, 
+                    nome: dadosUsuario.nome, 
+                    fichas: valorFichas, 
+                    reais: reaisReceber, 
+                    chavePix: chavePix.trim(),
+                    status: 'pendente', 
+                    data: new Date().getTime()
+                });
+                alert(`✅ Saque solicitado com sucesso!\nA Banca enviará R$ ${reaisReceber.toFixed(2).replace('.',',')} para a chave:\n${chavePix}`);
+            });
+        }
+
+        function calcularDados(p) {
+            let volumeA = p.poolA, volumeB = p.poolB, total = volumeA + volumeB;
+            if (total === 0) { volumeA = 100; volumeB = 100; total = 200; }
+            
+            let riscoAtual = p.risco || RISCO_CASA;
+            
+            let oddA = (total / (volumeA * OVERROUND)).toFixed(2), oddB = (total / (volumeB * OVERROUND)).toFixed(2);
+            let limA = Math.floor(((p.realB + riscoAtual) * (1-TAXA_CASA) - p.realA * (parseFloat(oddA)-1+TAXA_CASA)) / (parseFloat(oddA)-1+TAXA_CASA));
+            let limB = Math.floor(((p.realA + riscoAtual) * (1-TAXA_CASA) - p.realB * (parseFloat(oddB)-1+TAXA_CASA)) / (parseFloat(oddB)-1+TAXA_CASA));
+            return { oddA: Math.max(1.01, oddA), oddB: Math.max(1.01, oddB), limA: Math.max(0, limA), limB: Math.max(0, limB) };
+        }
+
+        // ===================== RENDERIZAÇÃO DE PARTIDAS CORRIGIDA =====================
+        function mudarFase(f) {
+            if(unsubscribeHistorico) unsubscribeHistorico();
+            faseAtual = f; atualizarCoresMenu(f);
+            const container = document.getElementById('container-principal');
+            if(unsubscribePartidas) unsubscribePartidas();
+
+            unsubscribePartidas = db.collection('partidas').where('fase', '==', faseAtual).onSnapshot(snapshot => {
+                container.innerHTML = '';
+                if (snapshot.empty) return container.innerHTML = '<p class="text-center text-gray-500 mt-10">Nenhuma partida programada.</p>';
+                let ativas = 0;
+                snapshot.forEach(doc => {
+                    const p = doc.data(), id = doc.id;
+                    if (p.status === 'preparacao') return; 
+                    
+                    ativas++;
+                    const c = calcularDados(p);
+                    let statusVisual = '';
+                    
+                    // Identifica se a partida está Encerrada, Anulada ou Aberta
+                    if (p.status === 'finalizada') {
+                        statusVisual = `<div class="mt-4 p-2 bg-gray-700 rounded text-center border border-gray-600"><span class="text-xs text-gray-400">Partida Encerrada</span><br><span class="font-bold text-yellow-400">Vencedor: ${p.vencedor === 'A' ? p.jogA : p.jogB} 🏆</span></div>`;
+                    } else if (p.status === 'anulada') {
+                        statusVisual = `<div class="mt-4 p-2 bg-red-900/30 rounded text-center border border-red-800"><span class="text-xs text-red-500 font-bold uppercase">⚠️ Partida Anulada</span><br><span class="text-[10px] text-gray-400">Apostas foram estornadas</span></div>`;
+                    } else {
+                        statusVisual = `<div class="flex gap-3 mt-4">
+                            <button onclick="apostar('${id}', 'A')" class="flex-1 bg-gray-700 hover:bg-green-700 p-2 rounded-lg border border-gray-600 shadow-sm transition"><span class="block text-green-400 font-black text-xl">${c.oddA}</span><span class="text-[9px] text-gray-400">Lim: ${c.limA} F.</span></button>
+                            <button onclick="apostar('${id}', 'B')" class="flex-1 bg-gray-700 hover:bg-green-700 p-2 rounded-lg border border-gray-600 shadow-sm transition"><span class="block text-green-400 font-black text-xl">${c.oddB}</span><span class="text-[9px] text-gray-400">Lim: ${c.limB} F.</span></button>
+                           </div>`;
+                    }
+                    
+                    container.innerHTML += `
+                        <div class="bg-gray-800 rounded-xl p-4 mb-4 border border-gray-700 shadow-lg">
+                            <div class="flex justify-between items-center bg-gray-900 p-3 rounded-lg border border-gray-700"><span class="font-bold text-sm w-5/12 text-center">${p.jogA}</span><span class="text-gray-600 text-[10px] font-black italic">VS</span><span class="font-bold text-sm w-5/12 text-center">${p.jogB}</span></div>
+                            ${statusVisual}
+                        </div>`;
+                });
+                if (ativas === 0) container.innerHTML = '<p class="text-center text-gray-500 mt-10">Partidas em preparação nos bastidores.</p>';
+            });
+        }
+
+        // ===================== HISTÓRICO CORRIGIDO =====================
+        function mostrarHistorico() {
+            if(unsubscribePartidas) unsubscribePartidas();
+            atualizarCoresMenu('Historico');
+            const container = document.getElementById('container-principal');
+            
+            unsubscribeHistorico = db.collection('apostas').where('uid', '==', auth.currentUser.uid).onSnapshot(snapshot => {
+                const vol = dadosUsuario.totalApostado || 0;
+                let rollover = `<div class="mb-4 bg-gray-900 p-3 rounded-lg border border-gray-700 text-xs"><span class="text-gray-400">Progresso para Saque (Rollover):</span> <span class="font-bold text-green-400">${vol} / 200 Fichas</span></div>`;
+                container.innerHTML = `<h2 class="text-lg font-bold text-blue-400 mb-2">Meu Histórico</h2>` + rollover;
+                
+                if(snapshot.empty) return container.innerHTML += '<p class="text-sm text-gray-500">Nenhuma aposta realizada.</p>';
+                
+                let apostas = [];
+                snapshot.forEach(doc => apostas.push(doc.data()));
+                apostas.sort((a, b) => b.data - a.data); 
+                
+                apostas.forEach(a => {
+                    let cor = 'border-gray-600', ico = '⏳', txt = 'Aguardando jogo...';
+                    
+                    // Adicionado o marcador visual de Anulada
+                    if(a.resultado === 'ganhou') { cor = 'border-green-500'; ico = '✅'; txt = `<span class="text-green-400 font-bold">+${a.premio} Fichas</span>`; } 
+                    else if(a.resultado === 'perdeu') { cor = 'border-red-500'; ico = '❌'; txt = `<span class="text-red-400">Perdeu</span>`; }
+                    else if(a.resultado === 'anulada') { cor = 'border-red-800'; ico = '⚠️'; txt = `<span class="text-red-400 font-bold uppercase">Estornada</span>`; }
+                    
+                    container.innerHTML += `
+                        <div class="bg-gray-800 p-3 mb-3 rounded-lg border ${cor} flex flex-col gap-1 shadow-md">
+                            <div class="flex justify-between items-center"><span class="text-xs text-gray-400">${a.jogA} x ${a.jogB}</span><span>${ico}</span></div>
+                            <div class="text-sm">Apostou <span class="font-bold">${a.valor}</span> em <span class="text-yellow-400 font-bold">${a.escolhaNome}</span> (Odd: ${a.oddTravada})</div>
+                            <div class="text-xs text-gray-400 mt-1">${txt}</div>
+                        </div>`;
+                });
+            });
+        }
+
+        async function apostar(id, escolha) {
+            const partidaRef = db.collection('partidas').doc(id), userRef = db.collection('usuarios').doc(auth.currentUser.uid);
+            const pDoc = await partidaRef.get(), p = pDoc.data(), c = calcularDados(p);
+            const lim = escolha === 'A' ? c.limA : c.limB, odd = escolha === 'A' ? c.oddA : c.oddB, nomeEsc = escolha === 'A' ? p.jogA : p.jogB;
+
+            let valor = parseInt(prompt(`Apostar em ${nomeEsc}\nOdd: ${odd}\nLim: ${lim} Fichas\n\nValor da aposta:`));
+            if (!valor || valor <= 0 || valor > dadosUsuario.saldo || valor > lim) return alert("Aposta inválida, acima do limite ou você não tem saldo suficiente.");
+
+            db.runTransaction(async (transaction) => {
+                transaction.update(userRef, { saldo: dadosUsuario.saldo - valor, totalApostado: firebase.firestore.FieldValue.increment(valor) });
+                if (escolha === 'A') transaction.update(partidaRef, { poolA: p.poolA + valor, realA: p.realA + valor });
+                else transaction.update(partidaRef, { poolB: p.poolB + valor, realB: p.realB + valor });
+            }).then(() => {
+                db.collection('apostas').add({ uid: auth.currentUser.uid, partidaId: id, jogA: p.jogA, jogB: p.jogB, escolha: escolha, escolhaNome: nomeEsc, valor: valor, oddTravada: odd, resultado: 'pendente', premio: 0, data: new Date().getTime() });
+                alert("✅ Aposta Registrada com Sucesso!");
+            }).catch(e => alert("Erro ao processar aposta: " + e));
+        }
+
+        function atualizarCoresMenu(ativo) {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('bg-green-600', 'bg-blue-600'); btn.classList.add('bg-gray-700');
+                if(btn.innerText === ativo) btn.classList.replace('bg-gray-700', 'bg-green-600');
+                if(ativo === 'Historico' && btn.id === 'btn-historico') btn.classList.replace('bg-gray-700', 'bg-blue-600');
+            });
+        }
+    </script>
+</body>
+</html>
