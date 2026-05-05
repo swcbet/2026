@@ -8,14 +8,54 @@
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <!-- Biblioteca para gerar o QR Code -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 </head>
 <body class="bg-gray-900 text-white font-sans antialiased pb-20">
+
+    <!-- ================= MODO TELÃO (NOVO) ================= -->
+    <div id="tela-telao" class="hidden fixed inset-0 bg-gray-950 z-[200] flex flex-col items-center justify-center p-8">
+        <button onclick="fecharTelao()" class="absolute top-6 right-8 text-gray-500 hover:text-white font-black text-4xl transition">&times;</button>
+        
+        <h1 class="text-3xl md:text-5xl font-black text-yellow-500 mb-2 uppercase tracking-[0.2em] drop-shadow-md">Apostas Abertas</h1>
+        <p class="text-gray-400 text-lg mb-8 uppercase tracking-widest font-bold animate-pulse">Escaneie o QR Code e faça sua entrada</p>
+        
+        <div class="flex justify-between items-center w-full max-w-6xl mb-12 gap-4">
+            <!-- JOGADOR A -->
+            <div class="flex-1 flex flex-col items-center">
+                <h2 id="telao-jogA" class="text-4xl md:text-6xl font-black text-white mb-6 text-center drop-shadow-lg">Jog A</h2>
+                <div class="bg-gray-900 rounded-[2rem] p-8 border-4 border-blue-500 shadow-[0_0_50px_rgba(59,130,246,0.3)] w-full text-center relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-2 bg-blue-500"></div>
+                    <span class="text-2xl text-blue-300 block mb-2 uppercase font-bold tracking-widest">ODD</span>
+                    <span id="telao-oddA" class="text-7xl md:text-9xl font-black text-blue-400 transition-all duration-300">1.00</span>
+                </div>
+            </div>
+            
+            <div class="text-5xl md:text-7xl font-black text-gray-700 italic px-4 md:px-8">VS</div>
+            
+            <!-- JOGADOR B -->
+            <div class="flex-1 flex flex-col items-center">
+                <h2 id="telao-jogB" class="text-4xl md:text-6xl font-black text-white mb-6 text-center drop-shadow-lg">Jog B</h2>
+                <div class="bg-gray-900 rounded-[2rem] p-8 border-4 border-purple-500 shadow-[0_0_50px_rgba(168,85,247,0.3)] w-full text-center relative overflow-hidden">
+                    <div class="absolute top-0 left-0 w-full h-2 bg-purple-500"></div>
+                    <span class="text-2xl text-purple-300 block mb-2 uppercase font-bold tracking-widest">ODD</span>
+                    <span id="telao-oddB" class="text-7xl md:text-9xl font-black text-purple-400 transition-all duration-300">1.00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- QR CODE -->
+        <div class="flex flex-col items-center bg-gray-800 p-6 rounded-3xl border border-gray-700 shadow-2xl">
+            <div id="qrcode-container" class="bg-white p-4 rounded-xl shadow-inner"></div>
+            <p id="telao-url-display" class="mt-4 text-gray-400 font-mono text-sm"></p>
+        </div>
+    </div>
+    <!-- =================================================== -->
 
     <div id="modal-apostas" class="hidden fixed inset-0 bg-black bg-opacity-80 z-[100] flex items-center justify-center p-4">
         <div class="bg-gray-800 p-6 rounded-2xl border border-indigo-800 shadow-2xl w-full max-w-md relative flex flex-col max-h-[80vh]">
             <button onclick="fecharModalApostas()" class="absolute top-3 right-4 text-gray-400 hover:text-white font-bold text-xl">&times;</button>
             <h2 id="titulo-modal-apostas" class="text-lg font-bold text-indigo-400 mb-4 text-center">🧾 Apostas da Partida</h2>
-            
             <div class="overflow-y-auto hide-scroll flex-1">
                 <table class="w-full text-left text-[10px]">
                     <thead>
@@ -55,13 +95,11 @@
         </header>
 
         <main class="max-w-md mx-auto p-4 flex flex-col gap-6">
-
+            <!-- ABA PARTIDAS -->
             <div id="aba-Partidas" class="flex flex-col gap-6">
-                <!-- NOVA PARTIDA -->
                 <div class="bg-gray-800 p-6 rounded-xl border border-blue-800 shadow-lg relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
                     <h2 class="text-lg font-bold text-blue-400 mb-4 text-center">⚔️ Nova Partida</h2>
-                    
                     <select id="fase-partida" class="w-full p-3 mb-3 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none text-sm">
                         <option value="Grupos">Fase de Grupos</option>
                         <option value="Oitavas">Oitavas de Final</option>
@@ -69,18 +107,14 @@
                         <option value="Semi">Semifinal</option>
                         <option value="Final">Final</option>
                     </select>
-                    
-                    <!-- CAMPO DE DATA DA PARTIDA -->
                     <div class="mb-3">
                         <label class="text-[10px] text-gray-400 uppercase tracking-widest pl-1 mb-1 block">Data e Hora (Opcional)</label>
                         <input type="datetime-local" id="data-partida" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg text-gray-300 outline-none text-sm focus:border-blue-500 transition">
                     </div>
-
                     <div class="flex gap-2 mb-4">
                         <input type="text" id="jogA" placeholder="Jogador A" class="flex-1 p-3 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm focus:border-blue-500 transition">
                         <input type="text" id="jogB" placeholder="Jogador B" class="flex-1 p-3 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm focus:border-blue-500 transition">
                     </div>
-                    
                     <button onclick="criarPartida()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-bold transition shadow-lg mt-2">Criar Rascunho</button>
                 </div>
 
@@ -95,6 +129,7 @@
                 </div>
             </div>
 
+            <!-- OUTRAS ABAS (MANTIDAS IGUAIS) -->
             <div id="aba-Financeiro" class="hidden flex flex-col gap-6 text-center">
                 <div class="bg-gray-800 p-6 rounded-xl border border-yellow-600 shadow-lg">
                     <h2 class="text-lg font-bold text-yellow-400 mb-4">📊 Livro-Caixa (R$)</h2>
@@ -161,9 +196,11 @@
         </main>
     </div>
 
-    <style>.hide-scroll::-webkit-scrollbar { display: none; } .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
-    input[type="datetime-local"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; opacity: 0.6; transition: 0.2s; }
-    input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+    <style>
+        .hide-scroll::-webkit-scrollbar { display: none; } 
+        .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; opacity: 0.6; transition: 0.2s; }
+        input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
     </style>
 
     <script>
@@ -179,6 +216,13 @@
         const RISK_MARGIN = 0.15; 
         
         let mapaUsuarios = {};
+        
+        // ================= CONFIGURAÇÃO DO TELÃO =================
+        // COLOQUE AQUI O LINK REAL DA PÁGINA ONDE OS JOGADORES APOSTAM
+        const URL_DO_SEU_SITE = "https://swcbet.github.io/2026/"; 
+        
+        let telaoAtivoId = null; // Guarda o ID da partida que está sendo exibida no telão
+        let qrCodeGerado = null; // Variável para controlar o desenho do QR Code
 
         function formatarDataHora(dataString) {
             if (!dataString) return '';
@@ -272,13 +316,12 @@
                 snap.forEach(doc => {
                     const u = doc.data();
                     mapaUsuarios[doc.id] = u.nome; 
-                    
                     s.innerHTML += `<option value="${doc.id}">${u.nome}</option>`;
                     t.innerHTML += `<tr class="border-b border-gray-800"><td class="py-3 font-bold text-white">${u.nome}</td><td class="py-3 text-yellow-400 text-right font-mono">${u.saldo} F</td><td class="py-3 text-center"><button onclick="excluirConta('${doc.id}', '${u.nome}')" class="bg-red-900/40 text-red-500 px-2 py-1 rounded text-[8px] font-black uppercase hover:bg-red-700 hover:text-white border border-red-900 transition">Excluir</button></td></tr>`;
                 });
             });
 
-            // PARTIDAS RASCUNHO (Agora com Data Editável)
+            // PARTIDAS RASCUNHO
             db.collection('partidas').where('status', '==', 'preparacao').onSnapshot(snap => {
                 const l = document.getElementById('lista-preparacao'); l.innerHTML = '';
                 
@@ -287,7 +330,6 @@
                 
                 rascunhos.forEach(p => {
                     const id = p.id;
-                    
                     const vT = p.volEsperado || 0;
                     const probA = p.probA || 50;
                     const probB = 100 - probA;
@@ -303,7 +345,6 @@
                     const vA = p.volA !== undefined ? p.volA : Math.floor(risco / (oddA_num - 1));
                     const vB = p.volB !== undefined ? p.volB : Math.floor(risco / (oddB_num - 1));
 
-                    // Novo: Data editável direto no card do Rascunho
                     let dataInput = `<input type="datetime-local" id="data-${id}" value="${p.dataJogo || ''}" class="bg-gray-800 text-gray-300 px-2 py-1 rounded text-[10px] border border-gray-600 outline-none focus:border-blue-500 w-32">`;
 
                     l.innerHTML += `
@@ -313,39 +354,18 @@
                                 ${dataInput}
                             </div>
                             
-                            <!-- Bloco Superior: Volume Total e Porcentagens -->
                             <div class="bg-gray-800 p-2 rounded mb-2 border border-gray-600 grid grid-cols-3 gap-2">
-                                <div>
-                                    <label class="text-[9px] text-gray-400 block text-center mb-1">Vol. Esperado</label>
-                                    <input type="number" id="volTotal-${id}" oninput="calcMkt('${id}', 'total')" value="${vT}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-white text-center border border-gray-700 focus:border-blue-500 font-bold">
-                                </div>
-                                <div>
-                                    <label class="text-[9px] text-gray-400 block text-center mb-1">Chance A (%)</label>
-                                    <input type="number" id="probA-${id}" oninput="calcMkt('${id}', 'prob')" value="${probA}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-blue-400 text-center border border-gray-700 focus:border-blue-500 font-bold">
-                                </div>
-                                <div>
-                                    <label class="text-[9px] text-gray-400 block text-center mb-1">Chance B (%)</label>
-                                    <input type="number" id="probB-${id}" value="${probB.toFixed(1)}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-purple-400 text-center border border-gray-700 font-bold" readonly>
-                                </div>
+                                <div><label class="text-[9px] text-gray-400 block text-center mb-1">Vol. Esperado</label><input type="number" id="volTotal-${id}" oninput="calcMkt('${id}', 'total')" value="${vT}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-white text-center border border-gray-700 focus:border-blue-500 font-bold"></div>
+                                <div><label class="text-[9px] text-gray-400 block text-center mb-1">Chance A (%)</label><input type="number" id="probA-${id}" oninput="calcMkt('${id}', 'prob')" value="${probA}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-blue-400 text-center border border-gray-700 focus:border-blue-500 font-bold"></div>
+                                <div><label class="text-[9px] text-gray-400 block text-center mb-1">Chance B (%)</label><input type="number" id="probB-${id}" value="${probB.toFixed(1)}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-purple-400 text-center border border-gray-700 font-bold" readonly></div>
                             </div>
 
-                            <!-- Bloco Central: Limites Individuais e Risco -->
                             <div class="bg-gray-800 p-2 rounded mb-3 border border-gray-600 grid grid-cols-3 gap-2">
-                                <div>
-                                    <label class="text-[9px] text-gray-400 block text-center mb-1">Limite ${p.jogA}</label>
-                                    <input type="number" id="volA-${id}" oninput="calcMkt('${id}', 'A')" value="${vA}" class="w-full p-2 bg-gray-900 rounded text-[10px] outline-none text-blue-400 text-center border border-gray-700 focus:border-blue-500 font-bold">
-                                </div>
-                                <div>
-                                    <label class="text-[9px] text-yellow-500 block text-center mb-1">Risco Máx (Liab)</label>
-                                    <input type="number" id="risco-${id}" oninput="calcMkt('${id}', 'risco')" value="${risco}" class="w-full p-2 bg-gray-900 rounded text-[10px] outline-none text-yellow-400 text-center border border-yellow-800 focus:border-yellow-500 font-bold shadow-inner">
-                                </div>
-                                <div>
-                                    <label class="text-[9px] text-gray-400 block text-center mb-1">Limite ${p.jogB}</label>
-                                    <input type="number" id="volB-${id}" oninput="calcMkt('${id}', 'B')" value="${vB}" class="w-full p-2 bg-gray-900 rounded text-[10px] outline-none text-purple-400 text-center border border-gray-700 focus:border-purple-500 font-bold">
-                                </div>
+                                <div><label class="text-[9px] text-gray-400 block text-center mb-1">Limite ${p.jogA}</label><input type="number" id="volA-${id}" oninput="calcMkt('${id}', 'A')" value="${vA}" class="w-full p-2 bg-gray-900 rounded text-[10px] outline-none text-blue-400 text-center border border-gray-700 focus:border-blue-500 font-bold"></div>
+                                <div><label class="text-[9px] text-yellow-500 block text-center mb-1">Risco Máx (Liab)</label><input type="number" id="risco-${id}" oninput="calcMkt('${id}', 'risco')" value="${risco}" class="w-full p-2 bg-gray-900 rounded text-[10px] outline-none text-yellow-400 text-center border border-yellow-800 focus:border-yellow-500 font-bold shadow-inner"></div>
+                                <div><label class="text-[9px] text-gray-400 block text-center mb-1">Limite ${p.jogB}</label><input type="number" id="volB-${id}" oninput="calcMkt('${id}', 'B')" value="${vB}" class="w-full p-2 bg-gray-900 rounded text-[10px] outline-none text-purple-400 text-center border border-gray-700 focus:border-purple-500 font-bold"></div>
                             </div>
 
-                            <!-- Visor de Odds e Campos Ocultos para o Banco -->
                             <div class="flex justify-between px-2 mb-3 bg-gray-950 p-2 rounded border border-gray-800">
                                 <div class="text-[10px] text-gray-400">Odd <span class="text-white">${p.jogA}</span>: <span id="oddA-${id}" class="text-blue-400 font-black text-sm ml-1">${odds.oA}</span></div>
                                 <div class="text-[10px] text-gray-400">Odd <span class="text-white">${p.jogB}</span>: <span id="oddB-${id}" class="text-purple-400 font-black text-sm ml-1">${odds.oB}</span></div>
@@ -362,7 +382,7 @@
                 });
             });
 
-            // PARTIDAS ABERTAS E RELATÓRIO (Agora com Data Editável Automática)
+            // PARTIDAS ABERTAS E RELATÓRIO
             db.collection('partidas').onSnapshot(snap => {
                 const lEncerrar = document.getElementById('lista-encerrar'); lEncerrar.innerHTML = '';
                 const lHistorico = document.getElementById('tabela-historico-partidas'); lHistorico.innerHTML = '';
@@ -373,19 +393,32 @@
                 snap.forEach(d => partidasEmAberto.push({id: d.id, ...d.data()}));
 
                 partidasEmAberto.forEach(p => {
-                    
+                    const oddAtual = simularOdd(p.poolA, p.poolB);
+
+                    // =================== ATUALIZAÇÃO DO TELÃO AO VIVO ===================
+                    if (telaoAtivoId === p.id) {
+                        document.getElementById('telao-jogA').innerText = p.jogA;
+                        document.getElementById('telao-jogB').innerText = p.jogB;
+                        document.getElementById('telao-oddA').innerText = oddAtual.oA;
+                        document.getElementById('telao-oddB').innerText = oddAtual.oB;
+                    }
+                    // ====================================================================
+
                     if (p.status === 'aberta' || p.status === 'bloqueada') {
                         let btnBloqueio = p.status === 'aberta' 
-                            ? `<button onclick="bloquearApostas('${p.id}')" class="w-full bg-yellow-600 hover:bg-yellow-500 py-2 rounded text-[10px] font-black uppercase text-white transition mb-3 shadow">🔒 Bloquear Apostas (Começou)</button>`
+                            ? `<button onclick="bloquearApostas('${p.id}')" class="w-full bg-yellow-600 hover:bg-yellow-500 py-2 rounded text-[10px] font-black uppercase text-white transition mb-3 shadow">🔒 Bloquear Apostas</button>`
                             : `<div class="w-full bg-gray-800 py-2 rounded text-[10px] font-black uppercase text-yellow-500 mb-3 border border-yellow-800 text-center shadow">⛔ Apostas Encerradas</div>`;
 
-                        // Novo: Data editável para partidas que já estão rodando no site
                         let dataInputAberta = `<div class="mb-2"><input type="datetime-local" id="data-aberta-${p.id}" value="${p.dataJogo || ''}" onchange="atualizarDataAberta('${p.id}')" class="bg-gray-800 text-gray-400 px-2 py-1 rounded text-[10px] border border-gray-700 outline-none text-center hover:text-white transition w-32 cursor-pointer"></div>`;
+                        
+                        // NOVO: BOTÃO DO TELÃO
+                        let btnTelao = p.status === 'aberta' ? `<button onclick="abrirTelao('${p.id}', '${p.jogA}', '${p.jogB}', '${oddAtual.oA}', '${oddAtual.oB}')" class="w-full bg-blue-700 hover:bg-blue-600 py-2 rounded text-[10px] font-black uppercase text-white transition mb-3 shadow border border-blue-500">📺 Modo Telão</button>` : '';
 
                         lEncerrar.innerHTML += `
                             <div class="bg-gray-900 p-3 rounded-xl border border-gray-700 mb-2 text-center shadow-lg">
                                 <p class="text-sm font-bold mb-1">${p.jogA} x ${p.jogB}</p>
                                 ${dataInputAberta}
+                                ${btnTelao}
                                 ${btnBloqueio}
                                 <div class="flex gap-2 mb-2">
                                     <button onclick="encerrarPartida('${p.id}', 'A', '${p.jogA}')" class="flex-1 bg-purple-700 py-2 rounded font-bold text-xs uppercase transition hover:bg-purple-600 shadow">Venceu ${p.jogA}</button>
@@ -397,7 +430,6 @@
 
                     if (p.status === 'aberta' || p.status === 'bloqueada' || p.status === 'finalizada' || p.status === 'anulada') {
                         temHistorico = true;
-                        const oddAtual = simularOdd(p.poolA, p.poolB);
                         const volRecebido = (p.realA || 0) + (p.realB || 0);
                         
                         let statusBadge = '';
@@ -435,20 +467,47 @@
             });
         }
 
-        // ================= FUNÇÃO PARA EDITAR DATA DO JOGO EM ABERTO =================
+        // ================= FUNÇÕES DO TELÃO (LÓGICA) =================
+        function abrirTelao(id, jogA, jogB, oddA, oddB) {
+            telaoAtivoId = id;
+            document.getElementById('telao-jogA').innerText = jogA;
+            document.getElementById('telao-jogB').innerText = jogB;
+            document.getElementById('telao-oddA').innerText = oddA;
+            document.getElementById('telao-oddB').innerText = oddB;
+            
+            document.getElementById('telao-url-display').innerText = URL_DO_SEU_SITE;
+            
+            // Gera o QR Code uma única vez para não duplicar
+            document.getElementById('qrcode-container').innerHTML = '';
+            qrCodeGerado = new QRCode(document.getElementById("qrcode-container"), {
+                text: URL_DO_SEU_SITE,
+                width: 180,
+                height: 180,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+
+            document.getElementById('tela-telao').classList.remove('hidden');
+        }
+
+        function fecharTelao() {
+            telaoAtivoId = null;
+            document.getElementById('tela-telao').classList.add('hidden');
+        }
+        // =============================================================
+
         function atualizarDataAberta(id) {
             const novaData = document.getElementById(`data-aberta-${id}`).value;
             db.collection('partidas').doc(id).update({ dataJogo: novaData || null });
         }
 
-        // ===================== LÓGICA DO MODAL DE APOSTAS =====================
         function fecharModalApostas() {
             document.getElementById('modal-apostas').classList.add('hidden');
         }
 
         async function verApostas(partidaId, jogA, jogB) {
             document.getElementById('titulo-modal-apostas').innerText = `🧾 Apostas: ${jogA} x ${jogB}`;
-            
             const tb = document.getElementById('tabela-modal-apostas');
             tb.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Buscando dados...</td></tr>';
             document.getElementById('modal-apostas').classList.remove('hidden');
@@ -456,11 +515,7 @@
             try {
                 const snap = await db.collection('apostas').where('partidaId', '==', partidaId).get();
                 tb.innerHTML = '';
-                
-                if(snap.empty) {
-                    tb.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Ninguém apostou nesta partida ainda.</td></tr>';
-                    return;
-                }
+                if(snap.empty) return tb.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Ninguém apostou nesta partida ainda.</td></tr>';
 
                 let apostas = [];
                 snap.forEach(doc => apostas.push(doc.data()));
@@ -468,7 +523,6 @@
 
                 apostas.forEach(a => {
                     const nomeUser = mapaUsuarios[a.uid] || 'Desconhecido';
-                    
                     let statusHtml = '<span class="text-gray-400">Pendente</span>';
                     if(a.resultado === 'ganhou') statusHtml = `<span class="text-green-400 font-bold">+${a.premio}</span>`;
                     else if(a.resultado === 'perdeu') statusHtml = `<span class="text-red-400">Perdeu</span>`;
@@ -483,12 +537,9 @@
                             <td class="py-3 text-right">${statusHtml}</td>
                         </tr>`;
                 });
-            } catch(e) {
-                tb.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Erro: ${e.message}</td></tr>`;
-            }
+            } catch(e) { tb.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Erro: ${e.message}</td></tr>`; }
         }
 
-        // --- FUNÇÕES DE AÇÃO GERAIS ---
         function bloquearApostas(id) {
             if(confirm("Deseja bloquear o mercado para este jogo? Ninguém mais poderá apostar.")) {
                 db.collection('partidas').doc(id).update({ status: 'bloqueada' });
@@ -498,7 +549,6 @@
         async function cancelarPartida(id, jogA, jogB) {
             const resp = prompt(`⚠️ EMERGÊNCIA!\nIsso anulará o jogo [${jogA} x ${jogB}] e devolverá todas as fichas.\n\nDigite ANULAR para confirmar:`);
             if(resp !== 'ANULAR') return alert('Ação cancelada.');
-            
             const batch = db.batch();
             const asSnap = await db.collection('apostas').where('partidaId', '==', id).get();
             asSnap.forEach(doc => {
@@ -515,9 +565,7 @@
         }
 
         async function deletarRascunho(id, jogA, jogB) {
-            if(confirm(`Deseja apagar o rascunho de ${jogA} vs ${jogB}?`)) {
-                await db.collection('partidas').doc(id).delete();
-            }
+            if(confirm(`Deseja apagar o rascunho de ${jogA} vs ${jogB}?`)) await db.collection('partidas').doc(id).delete();
         }
 
         function aprovarDeposito(docId, uid, fichas) {
@@ -538,18 +586,12 @@
         }
         async function excluirConta(uid, nome) { 
             const resp = prompt(`⚠️ ATENÇÃO!\nExcluir a conta de ${nome}?\nDigite APAGAR para confirmar:`);
-            if (resp === 'APAGAR') {
-                await db.collection('usuarios').doc(uid).delete(); 
-                alert('Conta excluída.');
-            }
+            if (resp === 'APAGAR') { await db.collection('usuarios').doc(uid).delete(); alert('Conta excluída.'); }
         }
 
         function simularOdd(pA, pB) {
             let t = pA + pB; if(t === 0) return { oA: "0.00", oB: "0.00" };
-            return { 
-                oA: Math.max(1.01, (t / (pA * OVERROUND))).toFixed(2), 
-                oB: Math.max(1.01, (t / (pB * OVERROUND))).toFixed(2) 
-            };
+            return { oA: Math.max(1.01, (t / (pA * OVERROUND))).toFixed(2), oB: Math.max(1.01, (t / (pB * OVERROUND))).toFixed(2) };
         }
         
         function criarPartida() {
@@ -557,25 +599,9 @@
             const a = document.getElementById('jogA').value.trim();
             const b = document.getElementById('jogB').value.trim();
             const dataP = document.getElementById('data-partida').value;
-            
             if(!a || !b) return alert("Digite os nomes dos jogadores.");
-            
-            db.collection('partidas').add({ 
-                fase: f, 
-                jogA: a, 
-                jogB: b, 
-                dataJogo: dataP || null,
-                poolA: 100, 
-                poolB: 100, 
-                risco: 500, 
-                realA: 0, 
-                realB: 0, 
-                status: 'preparacao', 
-                probA: 50 
-            });
-            document.getElementById('jogA').value = ''; 
-            document.getElementById('jogB').value = '';
-            document.getElementById('data-partida').value = '';
+            db.collection('partidas').add({ fase: f, jogA: a, jogB: b, dataJogo: dataP || null, poolA: 100, poolB: 100, risco: 500, realA: 0, realB: 0, status: 'preparacao', probA: 50 });
+            document.getElementById('jogA').value = ''; document.getElementById('jogB').value = ''; document.getElementById('data-partida').value = '';
         }
         
         function calcMkt(id, origem) {
@@ -588,17 +614,14 @@
             
             let valTotal = parseFloat(elTotal.value) || 0;
             let probA = parseFloat(elProbA.value) || 50;
-            
             if(probA > 99) probA = 99;
             if(probA < 1) probA = 1;
-            
             let probB = 100 - probA;
             elProbB.value = probB.toFixed(1); 
 
             let phantomTotal = valTotal * 0.2;
             let pA = Math.max(1, Math.floor(phantomTotal * (probA / 100)));
             let pB = Math.max(1, Math.floor(phantomTotal * (probB / 100)));
-            
             let odds = simularOdd(pA, pB);
             let oddA_num = parseFloat(odds.oA);
             let oddB_num = parseFloat(odds.oB);
@@ -611,18 +634,15 @@
                 risco = valTotal * RISK_MARGIN;
                 valA = risco / (oddA_num - 1);
                 valB = risco / (oddB_num - 1);
-            } 
-            else if (origem === 'A') {
+            } else if (origem === 'A') {
                 risco = valA * (oddA_num - 1);
                 valTotal = risco / RISK_MARGIN;
                 valB = risco / (oddB_num - 1);
-            } 
-            else if (origem === 'B') {
+            } else if (origem === 'B') {
                 risco = valB * (oddB_num - 1);
                 valTotal = risco / RISK_MARGIN;
                 valA = risco / (oddA_num - 1);
-            }
-            else if (origem === 'risco') {
+            } else if (origem === 'risco') {
                 valTotal = risco / RISK_MARGIN;
                 valA = risco / (oddA_num - 1);
                 valB = risco / (oddB_num - 1);
@@ -635,10 +655,8 @@
             elA.value = Math.floor(valA);
             elB.value = Math.floor(valB);
             elRisco.value = Math.floor(risco);
-
             document.getElementById(`oddA-${id}`).innerText = odds.oA;
             document.getElementById(`oddB-${id}`).innerText = odds.oB;
-
             document.getElementById(`pA-${id}`).value = pA;
             document.getElementById(`pB-${id}`).value = pB;
         }
@@ -654,21 +672,12 @@
             db.collection('partidas').doc(id).update({ 
                 poolA: parseInt(document.getElementById(`pA-${id}`).value) || 1, 
                 poolB: parseInt(document.getElementById(`pB-${id}`).value) || 1, 
-                risco: riscoCalc,
-                volEsperado: volInp,
-                volA: vA,
-                volB: vB,
-                probA: probA,
-                dataJogo: dataJogoInp || null
+                risco: riscoCalc, volEsperado: volInp, volA: vA, volB: vB, probA: probA, dataJogo: dataJogoInp || null
             }).then(() => {
                 const btn = document.getElementById(`btn-salvar-${id}`);
                 if(btn) { 
-                    btn.innerText = "✓ Salvo!"; 
-                    btn.classList.replace('bg-gray-700', 'bg-green-700');
-                    setTimeout(() => { 
-                        btn.innerText = "Salvar Edições"; 
-                        btn.classList.replace('bg-green-700', 'bg-gray-700');
-                    }, 1500); 
+                    btn.innerText = "✓ Salvo!"; btn.classList.replace('bg-gray-700', 'bg-green-700');
+                    setTimeout(() => { btn.innerText = "Salvar Edições"; btn.classList.replace('bg-green-700', 'bg-gray-700'); }, 1500); 
                 }
             });
         }
@@ -677,20 +686,12 @@
             const doc = await db.collection('partidas').doc(id).get();
             const p = doc.data();
             const odds = simularOdd(p.poolA, p.poolB);
-            
-            db.collection('partidas').doc(id).update({ 
-                status: 'aberta',
-                oddInicialA: odds.oA,
-                oddInicialB: odds.oB
-            }); 
+            db.collection('partidas').doc(id).update({ status: 'aberta', oddInicialA: odds.oA, oddInicialB: odds.oB }); 
         }
 
         async function encerrarPartida(id, lado, nome) {
             if(!confirm(`Pagar vitória de ${nome}?`)) return;
-            const batch = db.batch(); 
-            let ganhos = {}; 
-            let totalPagoAosVencedores = 0;
-
+            const batch = db.batch(); let ganhos = {}; let totalPagoAosVencedores = 0;
             const pSnap = await db.collection('partidas').doc(id).get();
             const pData = pSnap.data();
             const volumeRecebidoReal = (pData.realA || 0) + (pData.realB || 0);
@@ -707,50 +708,34 @@
             });
 
             for(let u in ganhos) batch.update(db.collection('usuarios').doc(u), { saldo: firebase.firestore.FieldValue.increment(ganhos[u]) });
-            
             const lucroParaABanca = volumeRecebidoReal - totalPagoAosVencedores;
-
-            batch.update(db.collection('partidas').doc(id), { 
-                status: 'finalizada', 
-                vencedor: lado,
-                lucroCasa: lucroParaABanca 
-            });
+            batch.update(db.collection('partidas').doc(id), { status: 'finalizada', vencedor: lado, lucroCasa: lucroParaABanca });
             await batch.commit();
         }
 
-        // --- FUNÇÕES DE LIMPEZA GERAL COM TRAVA DE SEGURANÇA ---
         async function apagarPartidasFinalizadas() { 
             const resp = prompt('⚠️ ATENÇÃO!\nIsso apagará a exibição de resultados.\n\nDigite APAGAR para confirmar:');
             if(resp !== 'APAGAR') return alert('Ação cancelada.');
-            
             const batch = db.batch();
-            const s1 = await db.collection('partidas').where('status', '==', 'finalizada').get(); 
-            s1.forEach(d => batch.delete(d.ref)); 
-            const s2 = await db.collection('partidas').where('status', '==', 'anulada').get(); 
-            s2.forEach(d => batch.delete(d.ref)); 
-            
-            await batch.commit(); 
-            alert('Partidas apagadas.');
+            const s1 = await db.collection('partidas').where('status', '==', 'finalizada').get(); s1.forEach(d => batch.delete(d.ref)); 
+            const s2 = await db.collection('partidas').where('status', '==', 'anulada').get(); s2.forEach(d => batch.delete(d.ref)); 
+            await batch.commit(); alert('Partidas apagadas.');
         }
 
         async function apagarHistoricoApostas() { 
             const resp = prompt('⚠️ PERIGO MÁXIMO!\nIsso apagará TODO o histórico de apostas.\n\nDigite APAGAR para confirmar:');
             if(resp !== 'APAGAR') return alert('Ação cancelada.');
-
             const s = await db.collection('apostas').get(); 
-            const batch = db.batch(); s.forEach(d => batch.delete(d.ref)); await batch.commit(); 
-            alert('Histórico de apostas limpo.');
+            const batch = db.batch(); s.forEach(d => batch.delete(d.ref)); await batch.commit(); alert('Histórico de apostas limpo.');
         }
 
         async function apagarLivroCaixa() {
             const resp = prompt('⚠️ ZERAR CAIXA?\n\nDigite ZERAR para confirmar:');
             if(resp !== 'ZERAR') return alert('Ação cancelada.');
-
             const batch = db.batch();
             const d = await db.collection('depositos').get(); d.forEach(doc => batch.delete(doc.ref));
             const s = await db.collection('saques').get(); s.forEach(doc => batch.delete(doc.ref));
-            await batch.commit();
-            alert('Livro-caixa zerado.');
+            await batch.commit(); alert('Livro-caixa zerado.');
         }
     </script>
 </body>
