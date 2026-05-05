@@ -71,16 +71,16 @@
                         <input type="text" id="jogA" placeholder="Jogador A" class="flex-1 p-3 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm">
                         <input type="text" id="jogB" placeholder="Jogador B" class="flex-1 p-3 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm">
                     </div>
-                    <button onclick="criarPartida()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-bold transition">Criar Rascunho</button>
+                    <button onclick="criarPartida()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-bold transition shadow">Criar Rascunho</button>
                 </div>
 
                 <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg">
-                    <h2 class="text-sm font-bold text-gray-300 mb-4 uppercase tracking-widest text-center">⚖️ Ajustar Odds e Abrir</h2>
+                    <h2 class="text-sm font-bold text-gray-300 mb-4 uppercase tracking-widest text-center">⚖️ Ajustar Limites e Abrir</h2>
                     <div id="lista-preparacao" class="flex flex-col gap-4"></div>
                 </div>
 
                 <div class="bg-gray-800 p-4 rounded-xl border border-purple-800 shadow-lg relative overflow-hidden text-center">
-                    <h2 class="text-sm font-bold text-purple-400 mb-4 uppercase tracking-widest">🏆 Jogos em Aberto</h2>
+                    <h2 class="text-sm font-bold text-purple-400 mb-4 uppercase tracking-widest">🏆 Jogos em Aberto / Em Andamento</h2>
                     <div id="lista-encerrar" class="flex flex-col gap-3"></div>
                 </div>
             </div>
@@ -114,7 +114,7 @@
                                     <th class="pb-2 text-center text-gray-300">Vol. Esp</th>
                                     <th class="pb-2 text-center text-gray-300">Odd Inic.</th>
                                     <th class="pb-2 text-center text-blue-400">Vol. Real</th>
-                                    <th class="pb-2 text-center text-blue-400">Odd Final</th>
+                                    <th class="pb-2 text-center text-blue-400">Odd Atual</th>
                                     <th class="pb-2 text-right text-green-400">Lucro</th>
                                     <th class="pb-2 text-center">Ação</th>
                                 </tr>
@@ -142,9 +142,9 @@
                 <div class="bg-gray-900 p-6 rounded-xl border border-red-900 shadow-lg text-center">
                     <h2 class="text-sm font-bold text-red-500 mb-4 uppercase">⚠️ Zona de Limpeza</h2>
                     <div class="flex flex-col gap-3">
-                        <button onclick="apagarPartidasFinalizadas()" class="w-full bg-gray-800 hover:bg-red-900 text-gray-300 py-3 rounded-lg text-xs font-bold border border-gray-700">Limpar Jogos Encerrados/Anulados</button>
-                        <button onclick="apagarHistoricoApostas()" class="w-full bg-gray-800 hover:bg-red-900 text-gray-300 py-3 rounded-lg text-xs font-bold border border-gray-700">Limpar Todas as Apostas</button>
-                        <button onclick="apagarLivroCaixa()" class="w-full bg-gray-800 hover:bg-red-900 text-gray-300 py-3 rounded-lg text-xs font-bold border border-gray-700">Zerar Livro-Caixa (R$)</button>
+                        <button onclick="apagarPartidasFinalizadas()" class="w-full bg-gray-800 hover:bg-red-900 text-gray-300 py-3 rounded-lg text-xs font-bold border border-gray-700 transition">Limpar Jogos Encerrados/Anulados</button>
+                        <button onclick="apagarHistoricoApostas()" class="w-full bg-gray-800 hover:bg-red-900 text-gray-300 py-3 rounded-lg text-xs font-bold border border-gray-700 transition">Limpar Todas as Apostas</button>
+                        <button onclick="apagarLivroCaixa()" class="w-full bg-gray-800 hover:bg-red-900 text-gray-300 py-3 rounded-lg text-xs font-bold border border-gray-700 transition">Zerar Livro-Caixa (R$)</button>
                     </div>
                 </div>
             </div>
@@ -172,19 +172,15 @@
             auth.signInWithEmailAndPassword(email, senha).catch(err => alert("Erro: " + err.message));
         }
 
-// 🔒 LISTA DE E-MAILS DOS CHEFES DA BANCA
-        // Coloque aqui o e-mail exato que você e seu amigo usaram para criar a conta no site da galera
         const EMAILS_ADMINS = ["gustavo.giovanardi10@gmail.com", "brunoogrobin@gmail.com"];
 
         auth.onAuthStateChanged(user => {
             if (user) {
-                // O sistema confere se o e-mail do cara está na lista VIP
                 if (EMAILS_ADMINS.includes(user.email)) {
                     document.getElementById('tela-login-admin').classList.add('hidden');
                     document.getElementById('painel-admin').classList.remove('hidden');
                     iniciarPainelAdmin(); 
                 } else {
-                    // Se não for admin, ele toma um chute e é deslogado na hora
                     alert("⛔ ACESSO NEGADO! Você não tem permissão para entrar na Banca.");
                     auth.signOut();
                 }
@@ -221,7 +217,7 @@
                 const l = document.getElementById('lista-depositos'); l.innerHTML = '';
                 snap.forEach(doc => {
                     const d = doc.data();
-                    l.innerHTML += `<div class="bg-gray-900 p-3 rounded border border-gray-700 flex justify-between items-center mb-2"><div><p class="font-bold text-sm">${d.nome}</p><p class="text-green-400 text-xs font-bold">R$ ${d.reais} ➔ ${d.fichas} F</p></div><button onclick="aprovarDeposito('${doc.id}', '${d.uid}', ${d.fichas})" class="bg-green-600 px-4 py-1 rounded text-xs font-bold shadow">Aprovar</button></div>`;
+                    l.innerHTML += `<div class="bg-gray-900 p-3 rounded border border-gray-700 flex justify-between items-center mb-2"><div><p class="font-bold text-sm">${d.nome}</p><p class="text-green-400 text-xs font-bold">R$ ${d.reais} ➔ ${d.fichas} F</p></div><button onclick="aprovarDeposito('${doc.id}', '${d.uid}', ${d.fichas})" class="bg-green-600 px-4 py-1 rounded text-xs font-bold shadow hover:bg-green-500">Aprovar</button></div>`;
                 });
             });
 
@@ -235,11 +231,11 @@
                             <p class="text-red-400 text-xs font-bold mb-2">Pagar R$ ${s.reais.toFixed(2)}</p>
                             <div class="bg-gray-800 p-2 rounded flex justify-between items-center border border-gray-600 mb-2">
                                 <code class="text-[9px] text-green-400 break-all font-mono">${s.chavePix || 'Sem chave'}</code>
-                                <button onclick="navigator.clipboard.writeText('${s.chavePix}').then(() => alert('Copiada!'))" class="bg-gray-700 px-2 py-1 rounded text-[9px]">Copiar</button>
+                                <button onclick="navigator.clipboard.writeText('${s.chavePix}').then(() => alert('Copiada!'))" class="bg-gray-700 px-2 py-1 rounded text-[9px] hover:bg-gray-600">Copiar</button>
                             </div>
                             <div class="flex gap-2">
-                                <button onclick="recusarSaque('${doc.id}', '${s.uid}', ${s.fichas})" class="flex-1 bg-gray-700 py-1 rounded text-xs font-bold">❌ Recusar</button>
-                                <button onclick="marcarSaquePago('${doc.id}')" class="flex-1 bg-red-700 py-1 rounded text-xs font-bold">✅ Pago</button>
+                                <button onclick="recusarSaque('${doc.id}', '${s.uid}', ${s.fichas})" class="flex-1 bg-gray-700 hover:bg-gray-600 py-1 rounded text-xs font-bold">❌ Recusar</button>
+                                <button onclick="marcarSaquePago('${doc.id}')" class="flex-1 bg-red-700 hover:bg-red-600 py-1 rounded text-xs font-bold">✅ Pago</button>
                             </div>
                         </div>`;
                 });
@@ -258,28 +254,50 @@
                 });
             });
 
-            // PARTIDAS RASCUNHO
+            // PARTIDAS RASCUNHO (Com Limites Interligados)
             db.collection('partidas').where('status', '==', 'preparacao').onSnapshot(snap => {
                 const l = document.getElementById('lista-preparacao'); l.innerHTML = '';
                 snap.forEach(doc => {
                     const p = doc.data(), id = doc.id, od = simularOdd(p.poolA, p.poolB);
+                    const vT = p.volEsperado || 0;
+                    const vA = p.volA !== undefined ? p.volA : Math.floor(vT / 2);
+                    const vB = p.volB !== undefined ? p.volB : Math.floor(vT / 2);
+
                     l.innerHTML += `
-                        <div class="bg-gray-900 p-4 rounded-lg border border-gray-700 mb-2">
+                        <div class="bg-gray-900 p-4 rounded-lg border border-gray-700 mb-2 shadow-lg">
                             <p class="text-xs font-bold text-blue-400 uppercase mb-2">${p.fase}: ${p.jogA} vs ${p.jogB}</p>
-                            <div class="bg-gray-800 p-2 rounded mb-3 border border-gray-700 flex gap-2">
-                                <input type="number" id="vol-${id}" placeholder="Vol. Esperado" class="flex-1 p-2 bg-gray-900 rounded text-[10px] outline-none" value="${p.volEsperado || ''}">
-                                <input type="number" id="prob-${id}" placeholder="Chance A %" class="w-16 p-2 bg-gray-900 rounded text-[10px] outline-none">
-                                <button onclick="assistente('${id}')" class="bg-blue-600 px-2 rounded text-[9px] font-bold">GERAR</button>
+                            
+                            <div class="bg-gray-800 p-2 rounded mb-3 border border-gray-600 grid grid-cols-3 gap-2">
+                                <div>
+                                    <label class="text-[9px] text-gray-400 block text-center mb-1">Vol. Total</label>
+                                    <input type="number" id="volTotal-${id}" oninput="calcLimites('${id}', 'total')" value="${vT}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-white text-center border border-gray-700 focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="text-[9px] text-gray-400 block text-center mb-1">Limite ${p.jogA}</label>
+                                    <input type="number" id="volA-${id}" oninput="calcLimites('${id}', 'A')" value="${vA}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-blue-400 text-center border border-gray-700 focus:border-blue-500">
+                                </div>
+                                <div>
+                                    <label class="text-[9px] text-gray-400 block text-center mb-1">Limite ${p.jogB}</label>
+                                    <input type="number" id="volB-${id}" oninput="calcLimites('${id}', 'B')" value="${vB}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-purple-400 text-center border border-gray-700 focus:border-purple-500">
+                                </div>
                             </div>
+
                             <div class="flex gap-2 text-[10px] mb-3">
-                                <div class="flex-1">Peso A (${od.oA})<input type="number" id="pA-${id}" value="${p.poolA}" class="w-full bg-gray-800 p-2 rounded mt-1 outline-none font-mono"></div>
-                                <div class="flex-1">Peso B (${od.oB})<input type="number" id="pB-${id}" value="${p.poolB}" class="w-full bg-gray-800 p-2 rounded mt-1 outline-none font-mono"></div>
-                                <div class="flex-1 text-yellow-400">Risco Limite<input type="number" id="risco-${id}" value="${p.risco || 0}" class="w-full bg-gray-800 p-2 rounded mt-1 outline-none text-yellow-400 border border-yellow-900 font-mono"></div>
+                                <div class="flex-1 text-center">Peso A (<span id="oddA-${id}" class="text-blue-400 font-bold">${od.oA}</span>)
+                                    <input type="number" id="pA-${id}" value="${p.poolA}" oninput="recalcOdds('${id}')" class="w-full bg-gray-800 p-2 rounded mt-1 outline-none font-mono text-center border border-gray-700">
+                                </div>
+                                <div class="flex-1 text-center">Peso B (<span id="oddB-${id}" class="text-purple-400 font-bold">${od.oB}</span>)
+                                    <input type="number" id="pB-${id}" value="${p.poolB}" oninput="recalcOdds('${id}')" class="w-full bg-gray-800 p-2 rounded mt-1 outline-none font-mono text-center border border-gray-700">
+                                </div>
+                                <div class="flex-1 text-center text-yellow-400">Risco Max / Aposta
+                                    <input type="number" id="risco-${id}" value="${p.risco || 0}" class="w-full bg-gray-800 p-2 rounded mt-1 outline-none text-yellow-400 border border-yellow-900 font-mono text-center">
+                                </div>
                             </div>
+
                             <div class="flex gap-2">
-                                <button onclick="deletarRascunho('${id}', '${p.jogA}', '${p.jogB}')" class="bg-gray-800 px-3 py-2 rounded text-[10px] text-red-500 border border-red-900">Excluir</button>
-                                <button onclick="salvarPesos('${id}')" class="flex-1 bg-gray-700 py-2 rounded text-[10px] font-bold">Salvar</button>
-                                <button onclick="abrirApostas('${id}')" class="flex-1 bg-green-600 py-2 rounded text-[10px] font-bold">ABRIR</button>
+                                <button onclick="deletarRascunho('${id}', '${p.jogA}', '${p.jogB}')" class="bg-gray-800 px-3 py-2 rounded text-[10px] text-red-500 border border-red-900 hover:bg-red-900 hover:text-white transition">Excluir</button>
+                                <button onclick="salvarPesos('${id}')" id="btn-salvar-${id}" class="flex-1 bg-gray-700 py-2 rounded text-[10px] font-bold hover:bg-gray-600 transition">Salvar Edições</button>
+                                <button onclick="abrirApostas('${id}')" class="flex-1 bg-green-600 py-2 rounded text-[10px] font-bold hover:bg-green-500 transition shadow">ABRIR APOSTAS</button>
                             </div>
                         </div>`;
                 });
@@ -295,19 +313,25 @@
                 snap.forEach(doc => {
                     const p = doc.data();
                     
-                    if (p.status === 'aberta') {
+                    // Renderiza partidas abertas ou bloqueadas na tela principal de encerramento
+                    if (p.status === 'aberta' || p.status === 'bloqueada') {
+                        let btnBloqueio = p.status === 'aberta' 
+                            ? `<button onclick="bloquearApostas('${doc.id}')" class="w-full bg-yellow-600 hover:bg-yellow-500 py-2 rounded text-[10px] font-black uppercase text-white transition mb-3 shadow">🔒 Bloquear Apostas (Começou)</button>`
+                            : `<div class="w-full bg-gray-800 py-2 rounded text-[10px] font-black uppercase text-yellow-500 mb-3 border border-yellow-800 text-center shadow">⛔ Apostas Encerradas</div>`;
+
                         lEncerrar.innerHTML += `
-                            <div class="bg-gray-900 p-3 rounded-xl border border-gray-700 mb-2 text-center">
+                            <div class="bg-gray-900 p-3 rounded-xl border border-gray-700 mb-2 text-center shadow-lg">
                                 <p class="text-sm font-bold mb-3">${p.jogA} x ${p.jogB}</p>
+                                ${btnBloqueio}
                                 <div class="flex gap-2 mb-2">
-                                    <button onclick="encerrarPartida('${doc.id}', 'A', '${p.jogA}')" class="flex-1 bg-purple-700 py-2 rounded font-bold text-xs uppercase transition hover:bg-purple-600">Venceu ${p.jogA}</button>
-                                    <button onclick="encerrarPartida('${doc.id}', 'B', '${p.jogB}')" class="flex-1 bg-purple-700 py-2 rounded font-bold text-xs uppercase transition hover:bg-purple-600">Venceu ${p.jogB}</button>
+                                    <button onclick="encerrarPartida('${doc.id}', 'A', '${p.jogA}')" class="flex-1 bg-purple-700 py-2 rounded font-bold text-xs uppercase transition hover:bg-purple-600 shadow">Venceu ${p.jogA}</button>
+                                    <button onclick="encerrarPartida('${doc.id}', 'B', '${p.jogB}')" class="flex-1 bg-purple-700 py-2 rounded font-bold text-xs uppercase transition hover:bg-purple-600 shadow">Venceu ${p.jogB}</button>
                                 </div>
-                                <button onclick="cancelarPartida('${doc.id}', '${p.jogA}', '${p.jogB}')" class="w-full bg-red-900 hover:bg-red-800 py-2 rounded text-[10px] font-black uppercase text-red-100 transition border border-red-700">⚠️ Anular Jogo e Estornar</button>
+                                <button onclick="cancelarPartida('${doc.id}', '${p.jogA}', '${p.jogB}')" class="w-full bg-red-900 hover:bg-red-800 py-2 rounded text-[10px] font-black uppercase text-red-100 transition border border-red-700 shadow">⚠️ Anular Jogo e Estornar</button>
                             </div>`;
                     }
 
-                    if (p.status === 'aberta' || p.status === 'finalizada' || p.status === 'anulada') {
+                    if (p.status === 'aberta' || p.status === 'bloqueada' || p.status === 'finalizada' || p.status === 'anulada') {
                         temHistorico = true;
                         const oddAtual = simularOdd(p.poolA, p.poolB);
                         const volRecebido = (p.realA || 0) + (p.realB || 0);
@@ -315,7 +339,8 @@
                         let statusBadge = '';
                         if (p.status === 'finalizada') statusBadge = `<span class="text-yellow-400">Final (${p.vencedor})</span>`;
                         else if (p.status === 'anulada') statusBadge = `<span class="text-red-500 font-bold">Anulada</span>`;
-                        else statusBadge = `<span class="text-green-400">Ao Vivo</span>`;
+                        else if (p.status === 'bloqueada') statusBadge = `<span class="text-yellow-500 font-bold">Bloqueada (Ao vivo)</span>`;
+                        else statusBadge = `<span class="text-green-400">Ao Vivo (Aberto)</span>`;
                         
                         let lucroHtml = '<span class="text-gray-500">Ao Vivo</span>';
                         if (p.status === 'finalizada') {
@@ -359,7 +384,6 @@
             document.getElementById('modal-apostas').classList.remove('hidden');
 
             try {
-                // Fetch simples (sem o orderBy) para não travar no erro de Índice do Firebase
                 const snap = await db.collection('apostas').where('partidaId', '==', partidaId).get();
                 tb.innerHTML = '';
                 
@@ -368,7 +392,6 @@
                     return;
                 }
 
-                // O código Javascript faz a organização por data em memória na velocidade da luz
                 let apostas = [];
                 snap.forEach(doc => apostas.push(doc.data()));
                 apostas.sort((a, b) => b.data - a.data);
@@ -395,7 +418,13 @@
             }
         }
 
-        // --- FUNÇÕES DE AÇÃO ---
+        // --- FUNÇÕES DE AÇÃO GERAIS ---
+        function bloquearApostas(id) {
+            if(confirm("Deseja bloquear o mercado para este jogo? Ninguém mais poderá apostar.")) {
+                db.collection('partidas').doc(id).update({ status: 'bloqueada' });
+            }
+        }
+
         async function cancelarPartida(id, jogA, jogB) {
             const resp = prompt(`⚠️ EMERGÊNCIA!\nIsso anulará o jogo [${jogA} x ${jogB}] e devolverá todas as fichas.\n\nDigite ANULAR para confirmar:`);
             if(resp !== 'ANULAR') return alert('Ação cancelada.');
@@ -456,29 +485,77 @@
             document.getElementById('jogA').value = ''; document.getElementById('jogB').value = '';
         }
         
-        function assistente(id) {
-            const v = parseInt(document.getElementById(`vol-${id}`).value) || 0, p = parseInt(document.getElementById(`prob-${id}`).value) || 50;
-            if(v < 100) return alert("Volume muito baixo para simulação.");
+        function calcLimites(id, origem) {
+            const elTotal = document.getElementById(`volTotal-${id}`);
+            const elA = document.getElementById(`volA-${id}`);
+            const elB = document.getElementById(`volB-${id}`);
             
-            const phant = v * 0.2;
-            const pA = Math.floor(phant * (p/100));
-            const pB = Math.floor(phant * ((100-p)/100));
-            const ris = Math.floor(v * 0.15); 
+            let valTotal = parseInt(elTotal.value) || 0;
+            let valA = parseInt(elA.value) || 0;
+            let valB = parseInt(elB.value) || 0;
+
+            if (origem === 'total') {
+                const currentSum = valA + valB;
+                if (currentSum === 0) {
+                    valA = Math.floor(valTotal / 2);
+                    valB = Math.floor(valTotal / 2);
+                } else {
+                    const percA = valA / currentSum;
+                    valA = Math.floor(valTotal * percA);
+                    valB = Math.floor(valTotal * (1 - percA));
+                }
+                elA.value = valA;
+                elB.value = valB;
+            } else if (origem === 'A' || origem === 'B') {
+                valTotal = valA + valB;
+                elTotal.value = valTotal;
+            }
+
+            document.getElementById(`pA-${id}`).value = Math.floor(valA * 0.2);
+            document.getElementById(`pB-${id}`).value = Math.floor(valB * 0.2);
+            document.getElementById(`risco-${id}`).value = Math.floor(valTotal * 0.15);
+
+            recalcOdds(id);
+        }
+
+        function recalcOdds(id) {
+            const pA = parseInt(document.getElementById(`pA-${id}`).value) || 0;
+            const pB = parseInt(document.getElementById(`pB-${id}`).value) || 0;
+            const t = pA + pB;
+            let oA = "0.00", oB = "0.00";
             
-            document.getElementById(`pA-${id}`).value = pA; 
-            document.getElementById(`pB-${id}`).value = pB; 
-            document.getElementById(`risco-${id}`).value = ris;
-            salvarPesos(id);
+            if (t > 0 && pA > 0) oA = Math.max(1.01, (t / (pA * OVERROUND))).toFixed(2);
+            if (t > 0 && pB > 0) oB = Math.max(1.01, (t / (pB * OVERROUND))).toFixed(2);
+
+            const oddAEl = document.getElementById(`oddA-${id}`);
+            const oddBEl = document.getElementById(`oddB-${id}`);
+            if(oddAEl) oddAEl.innerText = oA;
+            if(oddBEl) oddBEl.innerText = oB;
         }
 
         function salvarPesos(id) { 
-            const volInp = document.getElementById(`vol-${id}`) ? parseInt(document.getElementById(`vol-${id}`).value) : 0;
+            const volInp = parseInt(document.getElementById(`volTotal-${id}`).value) || 0;
+            const vA = parseInt(document.getElementById(`volA-${id}`).value) || 0;
+            const vB = parseInt(document.getElementById(`volB-${id}`).value) || 0;
+            
             db.collection('partidas').doc(id).update({ 
-                poolA: parseInt(document.getElementById(`pA-${id}`).value), 
-                poolB: parseInt(document.getElementById(`pB-${id}`).value), 
-                risco: parseInt(document.getElementById(`risco-${id}`).value),
-                volEsperado: volInp || 0
-            }); 
+                poolA: parseInt(document.getElementById(`pA-${id}`).value) || 0, 
+                poolB: parseInt(document.getElementById(`pB-${id}`).value) || 0, 
+                risco: parseInt(document.getElementById(`risco-${id}`).value) || 0,
+                volEsperado: volInp,
+                volA: vA,
+                volB: vB
+            }).then(() => {
+                const btn = document.getElementById(`btn-salvar-${id}`);
+                if(btn) { 
+                    btn.innerText = "✓ Salvo!"; 
+                    btn.classList.replace('bg-gray-700', 'bg-green-700');
+                    setTimeout(() => { 
+                        btn.innerText = "Salvar Edições"; 
+                        btn.classList.replace('bg-green-700', 'bg-gray-700');
+                    }, 1500); 
+                }
+            });
         }
 
         async function abrirApostas(id) { 
