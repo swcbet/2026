@@ -278,11 +278,10 @@
                 });
             });
 
-            // PARTIDAS RASCUNHO (Matemática Perfeita e Sincronizada)
+            // PARTIDAS RASCUNHO (Agora com Data Editável)
             db.collection('partidas').where('status', '==', 'preparacao').onSnapshot(snap => {
                 const l = document.getElementById('lista-preparacao'); l.innerHTML = '';
                 
-                // Ordenar para rascunhos aparecerem mais organizados, se tiverem data
                 let rascunhos = [];
                 snap.forEach(d => rascunhos.push({id: d.id, ...d.data()}));
                 
@@ -304,17 +303,14 @@
                     const vA = p.volA !== undefined ? p.volA : Math.floor(risco / (oddA_num - 1));
                     const vB = p.volB !== undefined ? p.volB : Math.floor(risco / (oddB_num - 1));
 
-                    // Cria a tag da Data se existir
-                    let dataTag = '';
-                    if (p.dataJogo) {
-                        dataTag = `<span class="bg-gray-800 text-gray-400 px-2 py-0.5 rounded text-[9px] border border-gray-600">${formatarDataHora(p.dataJogo)}</span>`;
-                    }
+                    // Novo: Data editável direto no card do Rascunho
+                    let dataInput = `<input type="datetime-local" id="data-${id}" value="${p.dataJogo || ''}" class="bg-gray-800 text-gray-300 px-2 py-1 rounded text-[10px] border border-gray-600 outline-none focus:border-blue-500 w-32">`;
 
                     l.innerHTML += `
                         <div class="bg-gray-900 p-4 rounded-lg border border-gray-700 mb-2 shadow-lg">
                             <div class="flex justify-between items-center mb-3">
                                 <p class="text-xs font-bold text-blue-400 uppercase">${p.fase}: ${p.jogA} vs ${p.jogB}</p>
-                                ${dataTag}
+                                ${dataInput}
                             </div>
                             
                             <!-- Bloco Superior: Volume Total e Porcentagens -->
@@ -366,7 +362,7 @@
                 });
             });
 
-            // PARTIDAS ABERTAS E RELATÓRIO
+            // PARTIDAS ABERTAS E RELATÓRIO (Agora com Data Editável Automática)
             db.collection('partidas').onSnapshot(snap => {
                 const lEncerrar = document.getElementById('lista-encerrar'); lEncerrar.innerHTML = '';
                 const lHistorico = document.getElementById('tabela-historico-partidas'); lHistorico.innerHTML = '';
@@ -383,12 +379,13 @@
                             ? `<button onclick="bloquearApostas('${p.id}')" class="w-full bg-yellow-600 hover:bg-yellow-500 py-2 rounded text-[10px] font-black uppercase text-white transition mb-3 shadow">🔒 Bloquear Apostas (Começou)</button>`
                             : `<div class="w-full bg-gray-800 py-2 rounded text-[10px] font-black uppercase text-yellow-500 mb-3 border border-yellow-800 text-center shadow">⛔ Apostas Encerradas</div>`;
 
-                        let dataStr = p.dataJogo ? `<div class="text-xs text-gray-400 mb-2 bg-gray-800 py-1 rounded inline-block px-2 border border-gray-700">${formatarDataHora(p.dataJogo)}</div>` : '';
+                        // Novo: Data editável para partidas que já estão rodando no site
+                        let dataInputAberta = `<div class="mb-2"><input type="datetime-local" id="data-aberta-${p.id}" value="${p.dataJogo || ''}" onchange="atualizarDataAberta('${p.id}')" class="bg-gray-800 text-gray-400 px-2 py-1 rounded text-[10px] border border-gray-700 outline-none text-center hover:text-white transition w-32 cursor-pointer"></div>`;
 
                         lEncerrar.innerHTML += `
                             <div class="bg-gray-900 p-3 rounded-xl border border-gray-700 mb-2 text-center shadow-lg">
                                 <p class="text-sm font-bold mb-1">${p.jogA} x ${p.jogB}</p>
-                                ${dataStr}
+                                ${dataInputAberta}
                                 ${btnBloqueio}
                                 <div class="flex gap-2 mb-2">
                                     <button onclick="encerrarPartida('${p.id}', 'A', '${p.jogA}')" class="flex-1 bg-purple-700 py-2 rounded font-bold text-xs uppercase transition hover:bg-purple-600 shadow">Venceu ${p.jogA}</button>
@@ -436,6 +433,12 @@
                 
                 if(!temHistorico) lHistorico.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-gray-500">Nenhum histórico disponível.</td></tr>';
             });
+        }
+
+        // ================= FUNÇÃO PARA EDITAR DATA DO JOGO EM ABERTO =================
+        function atualizarDataAberta(id) {
+            const novaData = document.getElementById(`data-aberta-${id}`).value;
+            db.collection('partidas').doc(id).update({ dataJogo: novaData || null });
         }
 
         // ===================== LÓGICA DO MODAL DE APOSTAS =====================
@@ -575,7 +578,6 @@
             document.getElementById('data-partida').value = '';
         }
         
-        // --- CALCULADORA DE MERCADO INTELIGENTE (EQUAÇÃO DOURADA LIABILITY) ---
         function calcMkt(id, origem) {
             const elTotal = document.getElementById(`volTotal-${id}`);
             const elProbA = document.getElementById(`probA-${id}`);
@@ -647,6 +649,7 @@
             const vB = parseInt(document.getElementById(`volB-${id}`).value) || 0;
             const probA = parseInt(document.getElementById(`probA-${id}`).value) || 50;
             const riscoCalc = parseInt(document.getElementById(`risco-${id}`).value) || 0;
+            const dataJogoInp = document.getElementById(`data-${id}`) ? document.getElementById(`data-${id}`).value : null;
             
             db.collection('partidas').doc(id).update({ 
                 poolA: parseInt(document.getElementById(`pA-${id}`).value) || 1, 
@@ -655,7 +658,8 @@
                 volEsperado: volInp,
                 volA: vA,
                 volB: vB,
-                probA: probA
+                probA: probA,
+                dataJogo: dataJogoInp || null
             }).then(() => {
                 const btn = document.getElementById(`btn-salvar-${id}`);
                 if(btn) { 
