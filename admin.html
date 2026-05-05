@@ -57,21 +57,31 @@
         <main class="max-w-md mx-auto p-4 flex flex-col gap-6">
 
             <div id="aba-Partidas" class="flex flex-col gap-6">
+                <!-- NOVA PARTIDA -->
                 <div class="bg-gray-800 p-6 rounded-xl border border-blue-800 shadow-lg relative overflow-hidden">
                     <div class="absolute top-0 left-0 w-full h-1 bg-blue-500"></div>
                     <h2 class="text-lg font-bold text-blue-400 mb-4 text-center">⚔️ Nova Partida</h2>
-                    <select id="fase-partida" class="w-full p-3 mb-4 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none text-sm">
+                    
+                    <select id="fase-partida" class="w-full p-3 mb-3 bg-gray-900 border border-gray-600 rounded-lg text-white outline-none text-sm">
                         <option value="Grupos">Fase de Grupos</option>
                         <option value="Oitavas">Oitavas de Final</option>
                         <option value="Quartas">Quartas de Final</option>
                         <option value="Semi">Semifinal</option>
                         <option value="Final">Final</option>
                     </select>
-                    <div class="flex gap-2 mb-4">
-                        <input type="text" id="jogA" placeholder="Jogador A" class="flex-1 p-3 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm">
-                        <input type="text" id="jogB" placeholder="Jogador B" class="flex-1 p-3 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm">
+                    
+                    <!-- CAMPO DE DATA DA PARTIDA -->
+                    <div class="mb-3">
+                        <label class="text-[10px] text-gray-400 uppercase tracking-widest pl-1 mb-1 block">Data e Hora (Opcional)</label>
+                        <input type="datetime-local" id="data-partida" class="w-full p-3 bg-gray-900 border border-gray-600 rounded-lg text-gray-300 outline-none text-sm focus:border-blue-500 transition">
                     </div>
-                    <button onclick="criarPartida()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-bold transition shadow">Criar Rascunho</button>
+
+                    <div class="flex gap-2 mb-4">
+                        <input type="text" id="jogA" placeholder="Jogador A" class="flex-1 p-3 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm focus:border-blue-500 transition">
+                        <input type="text" id="jogB" placeholder="Jogador B" class="flex-1 p-3 bg-gray-900 border border-gray-600 rounded-lg text-white text-sm focus:border-blue-500 transition">
+                    </div>
+                    
+                    <button onclick="criarPartida()" class="w-full bg-blue-600 hover:bg-blue-500 py-3 rounded-lg font-bold transition shadow-lg mt-2">Criar Rascunho</button>
                 </div>
 
                 <div class="bg-gray-800 p-4 rounded-xl border border-gray-700 shadow-lg">
@@ -151,7 +161,10 @@
         </main>
     </div>
 
-    <style>.hide-scroll::-webkit-scrollbar { display: none; } .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }</style>
+    <style>.hide-scroll::-webkit-scrollbar { display: none; } .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator { filter: invert(1); cursor: pointer; opacity: 0.6; transition: 0.2s; }
+    input[type="datetime-local"]::-webkit-calendar-picker-indicator:hover { opacity: 1; }
+    </style>
 
     <script>
         const firebaseConfig = {
@@ -163,9 +176,19 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
         const OVERROUND = 1.10;
-        const RISK_MARGIN = 0.15; // Risco global base: 15% do volume
+        const RISK_MARGIN = 0.15; 
         
         let mapaUsuarios = {};
+
+        function formatarDataHora(dataString) {
+            if (!dataString) return '';
+            const data = new Date(dataString);
+            const dia = String(data.getDate()).padStart(2, '0');
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const hora = String(data.getHours()).padStart(2, '0');
+            const min = String(data.getMinutes()).padStart(2, '0');
+            return `${dia}/${mes} às ${hora}:${min}`;
+        }
 
         function entrarAdmin() {
             const email = document.getElementById('email-admin').value.trim(), senha = document.getElementById('senha-admin').value.trim();
@@ -255,27 +278,44 @@
                 });
             });
 
-            // PARTIDAS RASCUNHO (Com Limites e Matemática de Casa de Apostas)
+            // PARTIDAS RASCUNHO (Matemática Perfeita e Sincronizada)
             db.collection('partidas').where('status', '==', 'preparacao').onSnapshot(snap => {
                 const l = document.getElementById('lista-preparacao'); l.innerHTML = '';
-                snap.forEach(doc => {
-                    const p = doc.data(), id = doc.id;
+                
+                // Ordenar para rascunhos aparecerem mais organizados, se tiverem data
+                let rascunhos = [];
+                snap.forEach(d => rascunhos.push({id: d.id, ...d.data()}));
+                
+                rascunhos.forEach(p => {
+                    const id = p.id;
                     
-                    // Variáveis iniciais
                     const vT = p.volEsperado || 0;
                     const probA = p.probA || 50;
                     const probB = 100 - probA;
                     
-                    let oddA = Math.max(1.01, 1 / ((probA / 100) * OVERROUND));
-                    let oddB = Math.max(1.01, 1 / ((probB / 100) * OVERROUND));
+                    let phantomTotal = vT * 0.2;
+                    let pA = Math.max(1, Math.floor(phantomTotal * (probA / 100)));
+                    let pB = Math.max(1, Math.floor(phantomTotal * (probB / 100)));
+                    let odds = simularOdd(pA, pB);
+                    let oddA_num = parseFloat(odds.oA);
+                    let oddB_num = parseFloat(odds.oB);
 
                     const risco = p.risco !== undefined ? p.risco : Math.floor(vT * RISK_MARGIN);
-                    const vA = p.volA !== undefined ? p.volA : Math.floor(risco / (oddA - 1));
-                    const vB = p.volB !== undefined ? p.volB : Math.floor(risco / (oddB - 1));
+                    const vA = p.volA !== undefined ? p.volA : Math.floor(risco / (oddA_num - 1));
+                    const vB = p.volB !== undefined ? p.volB : Math.floor(risco / (oddB_num - 1));
+
+                    // Cria a tag da Data se existir
+                    let dataTag = '';
+                    if (p.dataJogo) {
+                        dataTag = `<span class="bg-gray-800 text-gray-400 px-2 py-0.5 rounded text-[9px] border border-gray-600">${formatarDataHora(p.dataJogo)}</span>`;
+                    }
 
                     l.innerHTML += `
                         <div class="bg-gray-900 p-4 rounded-lg border border-gray-700 mb-2 shadow-lg">
-                            <p class="text-xs font-bold text-blue-400 uppercase mb-2">${p.fase}: ${p.jogA} vs ${p.jogB}</p>
+                            <div class="flex justify-between items-center mb-3">
+                                <p class="text-xs font-bold text-blue-400 uppercase">${p.fase}: ${p.jogA} vs ${p.jogB}</p>
+                                ${dataTag}
+                            </div>
                             
                             <!-- Bloco Superior: Volume Total e Porcentagens -->
                             <div class="bg-gray-800 p-2 rounded mb-2 border border-gray-600 grid grid-cols-3 gap-2">
@@ -289,7 +329,7 @@
                                 </div>
                                 <div>
                                     <label class="text-[9px] text-gray-400 block text-center mb-1">Chance B (%)</label>
-                                    <input type="number" id="probB-${id}" value="${probB}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-purple-400 text-center border border-gray-700 font-bold" readonly>
+                                    <input type="number" id="probB-${id}" value="${probB.toFixed(1)}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-purple-400 text-center border border-gray-700 font-bold" readonly>
                                 </div>
                             </div>
 
@@ -311,8 +351,8 @@
 
                             <!-- Visor de Odds e Campos Ocultos para o Banco -->
                             <div class="flex justify-between px-2 mb-3 bg-gray-950 p-2 rounded border border-gray-800">
-                                <div class="text-[10px] text-gray-400">Odd <span class="text-white">${p.jogA}</span>: <span id="oddA-${id}" class="text-blue-400 font-black text-sm ml-1">${oddA.toFixed(2)}</span></div>
-                                <div class="text-[10px] text-gray-400">Odd <span class="text-white">${p.jogB}</span>: <span id="oddB-${id}" class="text-purple-400 font-black text-sm ml-1">${oddB.toFixed(2)}</span></div>
+                                <div class="text-[10px] text-gray-400">Odd <span class="text-white">${p.jogA}</span>: <span id="oddA-${id}" class="text-blue-400 font-black text-sm ml-1">${odds.oA}</span></div>
+                                <div class="text-[10px] text-gray-400">Odd <span class="text-white">${p.jogB}</span>: <span id="oddB-${id}" class="text-purple-400 font-black text-sm ml-1">${odds.oB}</span></div>
                                 <input type="hidden" id="pA-${id}" value="${p.poolA}">
                                 <input type="hidden" id="pB-${id}" value="${p.poolB}">
                             </div>
@@ -332,24 +372,29 @@
                 const lHistorico = document.getElementById('tabela-historico-partidas'); lHistorico.innerHTML = '';
                 
                 let temHistorico = false;
+                
+                let partidasEmAberto = [];
+                snap.forEach(d => partidasEmAberto.push({id: d.id, ...d.data()}));
 
-                snap.forEach(doc => {
-                    const p = doc.data();
+                partidasEmAberto.forEach(p => {
                     
                     if (p.status === 'aberta' || p.status === 'bloqueada') {
                         let btnBloqueio = p.status === 'aberta' 
-                            ? `<button onclick="bloquearApostas('${doc.id}')" class="w-full bg-yellow-600 hover:bg-yellow-500 py-2 rounded text-[10px] font-black uppercase text-white transition mb-3 shadow">🔒 Bloquear Apostas (Começou)</button>`
+                            ? `<button onclick="bloquearApostas('${p.id}')" class="w-full bg-yellow-600 hover:bg-yellow-500 py-2 rounded text-[10px] font-black uppercase text-white transition mb-3 shadow">🔒 Bloquear Apostas (Começou)</button>`
                             : `<div class="w-full bg-gray-800 py-2 rounded text-[10px] font-black uppercase text-yellow-500 mb-3 border border-yellow-800 text-center shadow">⛔ Apostas Encerradas</div>`;
+
+                        let dataStr = p.dataJogo ? `<div class="text-xs text-gray-400 mb-2 bg-gray-800 py-1 rounded inline-block px-2 border border-gray-700">${formatarDataHora(p.dataJogo)}</div>` : '';
 
                         lEncerrar.innerHTML += `
                             <div class="bg-gray-900 p-3 rounded-xl border border-gray-700 mb-2 text-center shadow-lg">
-                                <p class="text-sm font-bold mb-3">${p.jogA} x ${p.jogB}</p>
+                                <p class="text-sm font-bold mb-1">${p.jogA} x ${p.jogB}</p>
+                                ${dataStr}
                                 ${btnBloqueio}
                                 <div class="flex gap-2 mb-2">
-                                    <button onclick="encerrarPartida('${doc.id}', 'A', '${p.jogA}')" class="flex-1 bg-purple-700 py-2 rounded font-bold text-xs uppercase transition hover:bg-purple-600 shadow">Venceu ${p.jogA}</button>
-                                    <button onclick="encerrarPartida('${doc.id}', 'B', '${p.jogB}')" class="flex-1 bg-purple-700 py-2 rounded font-bold text-xs uppercase transition hover:bg-purple-600 shadow">Venceu ${p.jogB}</button>
+                                    <button onclick="encerrarPartida('${p.id}', 'A', '${p.jogA}')" class="flex-1 bg-purple-700 py-2 rounded font-bold text-xs uppercase transition hover:bg-purple-600 shadow">Venceu ${p.jogA}</button>
+                                    <button onclick="encerrarPartida('${p.id}', 'B', '${p.jogB}')" class="flex-1 bg-purple-700 py-2 rounded font-bold text-xs uppercase transition hover:bg-purple-600 shadow">Venceu ${p.jogB}</button>
                                 </div>
-                                <button onclick="cancelarPartida('${doc.id}', '${p.jogA}', '${p.jogB}')" class="w-full bg-red-900 hover:bg-red-800 py-2 rounded text-[10px] font-black uppercase text-red-100 transition border border-red-700 shadow">⚠️ Anular Jogo e Estornar</button>
+                                <button onclick="cancelarPartida('${p.id}', '${p.jogA}', '${p.jogB}')" class="w-full bg-red-900 hover:bg-red-800 py-2 rounded text-[10px] font-black uppercase text-red-100 transition border border-red-700 shadow">⚠️ Anular Jogo e Estornar</button>
                             </div>`;
                     }
 
@@ -383,7 +428,7 @@
                                 <td class="py-3 text-center font-bold text-white font-mono">${oddAtual.oA} / ${oddAtual.oB}</td>
                                 <td class="py-3 text-right font-mono text-sm">${lucroHtml}</td>
                                 <td class="py-3 text-center">
-                                    <button onclick="verApostas('${doc.id}', '${p.jogA}', '${p.jogB}')" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded text-[9px] font-bold text-white uppercase shadow-md transition">Apostas</button>
+                                    <button onclick="verApostas('${p.id}', '${p.jogA}', '${p.jogB}')" class="bg-indigo-700 hover:bg-indigo-600 px-3 py-2 rounded text-[9px] font-bold text-white uppercase shadow-md transition">Apostas</button>
                                 </td>
                             </tr>`;
                     }
@@ -497,17 +542,40 @@
         }
 
         function simularOdd(pA, pB) {
-            let t = pA + pB; if(t === 0) return { oA: 0, oB: 0 };
-            return { oA: Math.max(1.01, (t / (pA * OVERROUND))).toFixed(2), oB: Math.max(1.01, (t / (pB * OVERROUND))).toFixed(2) };
-        }
-        function criarPartida() {
-            const f = document.getElementById('fase-partida').value, a = document.getElementById('jogA').value, b = document.getElementById('jogB').value;
-            if(!a || !b) return;
-            db.collection('partidas').add({ fase: f, jogA: a, jogB: b, poolA: 100, poolB: 100, risco: 500, realA: 0, realB: 0, status: 'preparacao', probA: 50 });
-            document.getElementById('jogA').value = ''; document.getElementById('jogB').value = '';
+            let t = pA + pB; if(t === 0) return { oA: "0.00", oB: "0.00" };
+            return { 
+                oA: Math.max(1.01, (t / (pA * OVERROUND))).toFixed(2), 
+                oB: Math.max(1.01, (t / (pB * OVERROUND))).toFixed(2) 
+            };
         }
         
-        // --- CALCULADORA DE MERCADO INTELIGENTE (LIABILITY EXACT MATCH) ---
+        function criarPartida() {
+            const f = document.getElementById('fase-partida').value;
+            const a = document.getElementById('jogA').value.trim();
+            const b = document.getElementById('jogB').value.trim();
+            const dataP = document.getElementById('data-partida').value;
+            
+            if(!a || !b) return alert("Digite os nomes dos jogadores.");
+            
+            db.collection('partidas').add({ 
+                fase: f, 
+                jogA: a, 
+                jogB: b, 
+                dataJogo: dataP || null,
+                poolA: 100, 
+                poolB: 100, 
+                risco: 500, 
+                realA: 0, 
+                realB: 0, 
+                status: 'preparacao', 
+                probA: 50 
+            });
+            document.getElementById('jogA').value = ''; 
+            document.getElementById('jogB').value = '';
+            document.getElementById('data-partida').value = '';
+        }
+        
+        // --- CALCULADORA DE MERCADO INTELIGENTE (EQUAÇÃO DOURADA LIABILITY) ---
         function calcMkt(id, origem) {
             const elTotal = document.getElementById(`volTotal-${id}`);
             const elProbA = document.getElementById(`probA-${id}`);
@@ -519,61 +587,58 @@
             let valTotal = parseFloat(elTotal.value) || 0;
             let probA = parseFloat(elProbA.value) || 50;
             
-            // Trava as porcentagens entre 1% e 99% para não quebrar a matemática
             if(probA > 99) probA = 99;
             if(probA < 1) probA = 1;
             
             let probB = 100 - probA;
             elProbB.value = probB.toFixed(1); 
 
-            // Decimais das Porcentagens e Cálculo Bruto das Odds com a margem da casa (Overround)
-            let pA_dec = probA / 100;
-            let pB_dec = probB / 100;
-            let oddA = Math.max(1.01, 1 / (pA_dec * OVERROUND));
-            let oddB = Math.max(1.01, 1 / (pB_dec * OVERROUND));
+            let phantomTotal = valTotal * 0.2;
+            let pA = Math.max(1, Math.floor(phantomTotal * (probA / 100)));
+            let pB = Math.max(1, Math.floor(phantomTotal * (probB / 100)));
+            
+            let odds = simularOdd(pA, pB);
+            let oddA_num = parseFloat(odds.oA);
+            let oddB_num = parseFloat(odds.oB);
 
             let valA = parseFloat(elA.value) || 0;
             let valB = parseFloat(elB.value) || 0;
             let risco = parseFloat(elRisco.value) || 0;
-
-            // O CORE DA LÓGICA: Limite = Risco / (Odd - 1)
-            // Isso garante que a casa nunca vai precisar pagar mais do que a reserva de Risco que definiu
+            
             if (origem === 'total' || origem === 'prob') {
                 risco = valTotal * RISK_MARGIN;
-                valA = risco / (oddA - 1);
-                valB = risco / (oddB - 1);
+                valA = risco / (oddA_num - 1);
+                valB = risco / (oddB_num - 1);
             } 
             else if (origem === 'A') {
-                risco = valA * (oddA - 1);
+                risco = valA * (oddA_num - 1);
                 valTotal = risco / RISK_MARGIN;
-                valB = risco / (oddB - 1);
+                valB = risco / (oddB_num - 1);
             } 
             else if (origem === 'B') {
-                risco = valB * (oddB - 1);
+                risco = valB * (oddB_num - 1);
                 valTotal = risco / RISK_MARGIN;
-                valA = risco / (oddA - 1);
+                valA = risco / (oddA_num - 1);
             }
             else if (origem === 'risco') {
                 valTotal = risco / RISK_MARGIN;
-                valA = risco / (oddA - 1);
-                valB = risco / (oddB - 1);
+                valA = risco / (oddA_num - 1);
+                valB = risco / (oddB_num - 1);
             }
 
-            // Exibir arredondado para o usuário não ver números quebrados feios
+            if (!isFinite(valA) || valA < 0) valA = 0;
+            if (!isFinite(valB) || valB < 0) valB = 0;
+
             elTotal.value = Math.floor(valTotal);
             elA.value = Math.floor(valA);
             elB.value = Math.floor(valB);
             elRisco.value = Math.floor(risco);
 
-            // Mostrar Odds Calculadas Perfeitamente
-            document.getElementById(`oddA-${id}`).innerText = oddA.toFixed(2);
-            document.getElementById(`oddB-${id}`).innerText = oddB.toFixed(2);
+            document.getElementById(`oddA-${id}`).innerText = odds.oA;
+            document.getElementById(`oddB-${id}`).innerText = odds.oB;
 
-            // Alimenta os "Pesos" ocultos que vão para o Firebase para que o Motor Pari-Mutuel 
-            // abra a partida mantendo essas proporções perfeitas que você definiu.
-            let phantomTotal = valTotal * 0.2; // Liquidez fantasma proporcional
-            document.getElementById(`pA-${id}`).value = Math.floor(phantomTotal * pA_dec) || 1;
-            document.getElementById(`pB-${id}`).value = Math.floor(phantomTotal * pB_dec) || 1;
+            document.getElementById(`pA-${id}`).value = pA;
+            document.getElementById(`pB-${id}`).value = pB;
         }
 
         function salvarPesos(id) { 
