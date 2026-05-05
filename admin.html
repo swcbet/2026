@@ -163,6 +163,7 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
         const OVERROUND = 1.10;
+        const RISK_MARGIN = 0.15; // Risco global base: 15% do volume
         
         let mapaUsuarios = {};
 
@@ -254,57 +255,66 @@
                 });
             });
 
-            // PARTIDAS RASCUNHO (Com Limites e Porcentagens Interligadas)
+            // PARTIDAS RASCUNHO (Com Limites e Matemática de Casa de Apostas)
             db.collection('partidas').where('status', '==', 'preparacao').onSnapshot(snap => {
                 const l = document.getElementById('lista-preparacao'); l.innerHTML = '';
                 snap.forEach(doc => {
-                    const p = doc.data(), id = doc.id, od = simularOdd(p.poolA, p.poolB);
+                    const p = doc.data(), id = doc.id;
+                    
+                    // Variáveis iniciais
                     const vT = p.volEsperado || 0;
                     const probA = p.probA || 50;
                     const probB = 100 - probA;
-                    const vA = p.volA !== undefined ? p.volA : Math.floor(vT * (probA/100));
-                    const vB = p.volB !== undefined ? p.volB : Math.floor(vT * (probB/100));
+                    
+                    let oddA = Math.max(1.01, 1 / ((probA / 100) * OVERROUND));
+                    let oddB = Math.max(1.01, 1 / ((probB / 100) * OVERROUND));
+
+                    const risco = p.risco !== undefined ? p.risco : Math.floor(vT * RISK_MARGIN);
+                    const vA = p.volA !== undefined ? p.volA : Math.floor(risco / (oddA - 1));
+                    const vB = p.volB !== undefined ? p.volB : Math.floor(risco / (oddB - 1));
 
                     l.innerHTML += `
                         <div class="bg-gray-900 p-4 rounded-lg border border-gray-700 mb-2 shadow-lg">
                             <p class="text-xs font-bold text-blue-400 uppercase mb-2">${p.fase}: ${p.jogA} vs ${p.jogB}</p>
                             
+                            <!-- Bloco Superior: Volume Total e Porcentagens -->
                             <div class="bg-gray-800 p-2 rounded mb-2 border border-gray-600 grid grid-cols-3 gap-2">
                                 <div>
-                                    <label class="text-[9px] text-gray-400 block text-center mb-1">Vol. Total</label>
-                                    <input type="number" id="volTotal-${id}" oninput="calcMkt('${id}', 'total')" value="${vT}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-white text-center border border-gray-700 focus:border-blue-500">
+                                    <label class="text-[9px] text-gray-400 block text-center mb-1">Vol. Esperado</label>
+                                    <input type="number" id="volTotal-${id}" oninput="calcMkt('${id}', 'total')" value="${vT}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-white text-center border border-gray-700 focus:border-blue-500 font-bold">
                                 </div>
                                 <div>
                                     <label class="text-[9px] text-gray-400 block text-center mb-1">Chance A (%)</label>
-                                    <input type="number" id="probA-${id}" oninput="calcMkt('${id}', 'prob')" value="${probA}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-blue-400 text-center border border-gray-700 focus:border-blue-500">
+                                    <input type="number" id="probA-${id}" oninput="calcMkt('${id}', 'prob')" value="${probA}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-blue-400 text-center border border-gray-700 focus:border-blue-500 font-bold">
                                 </div>
                                 <div>
                                     <label class="text-[9px] text-gray-400 block text-center mb-1">Chance B (%)</label>
-                                    <input type="number" id="probB-${id}" value="${probB}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-purple-400 text-center border border-gray-700" readonly>
+                                    <input type="number" id="probB-${id}" value="${probB}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-purple-400 text-center border border-gray-700 font-bold" readonly>
                                 </div>
                             </div>
 
-                            <div class="bg-gray-800 p-2 rounded mb-3 border border-gray-600 grid grid-cols-2 gap-2">
+                            <!-- Bloco Central: Limites Individuais e Risco -->
+                            <div class="bg-gray-800 p-2 rounded mb-3 border border-gray-600 grid grid-cols-3 gap-2">
                                 <div>
-                                    <label class="text-[9px] text-gray-400 block text-center mb-1">Limite em ${p.jogA}</label>
-                                    <input type="number" id="volA-${id}" oninput="calcMkt('${id}', 'A')" value="${vA}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-blue-400 text-center border border-gray-700 focus:border-blue-500 font-bold">
+                                    <label class="text-[9px] text-gray-400 block text-center mb-1">Limite ${p.jogA}</label>
+                                    <input type="number" id="volA-${id}" oninput="calcMkt('${id}', 'A')" value="${vA}" class="w-full p-2 bg-gray-900 rounded text-[10px] outline-none text-blue-400 text-center border border-gray-700 focus:border-blue-500 font-bold">
                                 </div>
                                 <div>
-                                    <label class="text-[9px] text-gray-400 block text-center mb-1">Limite em ${p.jogB}</label>
-                                    <input type="number" id="volB-${id}" oninput="calcMkt('${id}', 'B')" value="${vB}" class="w-full p-2 bg-gray-900 rounded text-xs outline-none text-purple-400 text-center border border-gray-700 focus:border-purple-500 font-bold">
+                                    <label class="text-[9px] text-yellow-500 block text-center mb-1">Risco Máx (Liab)</label>
+                                    <input type="number" id="risco-${id}" oninput="calcMkt('${id}', 'risco')" value="${risco}" class="w-full p-2 bg-gray-900 rounded text-[10px] outline-none text-yellow-400 text-center border border-yellow-800 focus:border-yellow-500 font-bold shadow-inner">
+                                </div>
+                                <div>
+                                    <label class="text-[9px] text-gray-400 block text-center mb-1">Limite ${p.jogB}</label>
+                                    <input type="number" id="volB-${id}" oninput="calcMkt('${id}', 'B')" value="${vB}" class="w-full p-2 bg-gray-900 rounded text-[10px] outline-none text-purple-400 text-center border border-gray-700 focus:border-purple-500 font-bold">
                                 </div>
                             </div>
 
-                            <div class="flex gap-2 text-[10px] mb-3">
-                                <div class="flex-1 text-center">Odd A (<span id="oddA-${id}" class="text-blue-400 font-bold text-sm">${od.oA}</span>)
-                                    <input type="hidden" id="pA-${id}" value="${p.poolA}">
-                                </div>
-                                <div class="flex-1 text-center text-yellow-400">Risco / Aposta
-                                    <input type="number" id="risco-${id}" value="${p.risco || 0}" class="w-full bg-transparent p-1 mt-1 outline-none text-yellow-400 text-center font-bold">
-                                </div>
-                                <div class="flex-1 text-center">Odd B (<span id="oddB-${id}" class="text-purple-400 font-bold text-sm">${od.oB}</span>)
-                                    <input type="hidden" id="pB-${id}" value="${p.poolB}">
-                                </div>
+                            <!-- Visor de Odds e Campos Ocultos para o Banco -->
+                            <div class="flex justify-between px-2 mb-3 bg-gray-950 p-2 rounded border border-gray-800">
+                                <div class="text-[10px] text-gray-400">Odd <span class="text-white">${p.jogA}</span>: <span id="oddA-${id}" class="text-blue-400 font-black text-sm ml-1">${oddA.toFixed(2)}</span></div>
+                                <div class="text-[10px] text-gray-400">Odd <span class="text-white">${p.jogB}</span>: <span id="oddB-${id}" class="text-purple-400 font-black text-sm ml-1">${oddB.toFixed(2)}</span></div>
+                                <input type="hidden" id="pA-${id}" value="${p.poolA}">
+                                <input type="hidden" id="pB-${id}" value="${p.poolB}">
                             </div>
 
                             <div class="flex gap-2">
@@ -497,70 +507,73 @@
             document.getElementById('jogA').value = ''; document.getElementById('jogB').value = '';
         }
         
-        // --- CALCULADORA DE MERCADO INTELIGENTE ---
+        // --- CALCULADORA DE MERCADO INTELIGENTE (LIABILITY EXACT MATCH) ---
         function calcMkt(id, origem) {
             const elTotal = document.getElementById(`volTotal-${id}`);
             const elProbA = document.getElementById(`probA-${id}`);
             const elProbB = document.getElementById(`probB-${id}`);
             const elA = document.getElementById(`volA-${id}`);
             const elB = document.getElementById(`volB-${id}`);
+            const elRisco = document.getElementById(`risco-${id}`);
             
-            let valTotal = parseInt(elTotal.value) || 0;
-            let probA = parseInt(elProbA.value) || 50;
+            let valTotal = parseFloat(elTotal.value) || 0;
+            let probA = parseFloat(elProbA.value) || 50;
             
-            // Trava as porcentagens entre 1% e 99%
+            // Trava as porcentagens entre 1% e 99% para não quebrar a matemática
             if(probA > 99) probA = 99;
             if(probA < 1) probA = 1;
             
             let probB = 100 - probA;
-            elProbB.value = probB; 
+            elProbB.value = probB.toFixed(1); 
 
-            let valA = parseInt(elA.value) || 0;
-            let valB = parseInt(elB.value) || 0;
+            // Decimais das Porcentagens e Cálculo Bruto das Odds com a margem da casa (Overround)
+            let pA_dec = probA / 100;
+            let pB_dec = probB / 100;
+            let oddA = Math.max(1.01, 1 / (pA_dec * OVERROUND));
+            let oddB = Math.max(1.01, 1 / (pB_dec * OVERROUND));
 
+            let valA = parseFloat(elA.value) || 0;
+            let valB = parseFloat(elB.value) || 0;
+            let risco = parseFloat(elRisco.value) || 0;
+
+            // O CORE DA LÓGICA: Limite = Risco / (Odd - 1)
+            // Isso garante que a casa nunca vai precisar pagar mais do que a reserva de Risco que definiu
             if (origem === 'total' || origem === 'prob') {
-                // Se mudou o Total ou a Chance, refaz os limites
-                valA = Math.floor(valTotal * (probA / 100));
-                valB = Math.floor(valTotal * (probB / 100));
-                elA.value = valA;
-                elB.value = valB;
+                risco = valTotal * RISK_MARGIN;
+                valA = risco / (oddA - 1);
+                valB = risco / (oddB - 1);
             } 
             else if (origem === 'A') {
-                // Se mudou o Limite A, refaz o Total baseado na Chance A
-                valTotal = Math.floor(valA / (probA / 100));
-                valB = valTotal - valA; 
-                elTotal.value = valTotal;
-                elB.value = valB;
+                risco = valA * (oddA - 1);
+                valTotal = risco / RISK_MARGIN;
+                valB = risco / (oddB - 1);
             } 
             else if (origem === 'B') {
-                // Se mudou o Limite B, refaz o Total baseado na Chance B
-                valTotal = Math.floor(valB / (probB / 100));
-                valA = valTotal - valB;
-                elTotal.value = valTotal;
-                elA.value = valA;
+                risco = valB * (oddB - 1);
+                valTotal = risco / RISK_MARGIN;
+                valA = risco / (oddA - 1);
+            }
+            else if (origem === 'risco') {
+                valTotal = risco / RISK_MARGIN;
+                valA = risco / (oddA - 1);
+                valB = risco / (oddB - 1);
             }
 
-            // Alimentando as Odds automaticamente (20% do volume = dinheiro fantasma inicial)
-            document.getElementById(`pA-${id}`).value = Math.floor(valA * 0.2);
-            document.getElementById(`pB-${id}`).value = Math.floor(valB * 0.2);
-            document.getElementById(`risco-${id}`).value = Math.floor(valTotal * 0.15); // Risco automático (15%)
+            // Exibir arredondado para o usuário não ver números quebrados feios
+            elTotal.value = Math.floor(valTotal);
+            elA.value = Math.floor(valA);
+            elB.value = Math.floor(valB);
+            elRisco.value = Math.floor(risco);
 
-            recalcOdds(id);
-        }
+            // Mostrar Odds Calculadas Perfeitamente
+            document.getElementById(`oddA-${id}`).innerText = oddA.toFixed(2);
+            document.getElementById(`oddB-${id}`).innerText = oddB.toFixed(2);
 
-        function recalcOdds(id) {
-            const pA = parseInt(document.getElementById(`pA-${id}`).value) || 0;
-            const pB = parseInt(document.getElementById(`pB-${id}`).value) || 0;
-            const t = pA + pB;
-            let oA = "0.00", oB = "0.00";
-            
-            if (t > 0 && pA > 0) oA = Math.max(1.01, (t / (pA * OVERROUND))).toFixed(2);
-            if (t > 0 && pB > 0) oB = Math.max(1.01, (t / (pB * OVERROUND))).toFixed(2);
-
-            const oddAEl = document.getElementById(`oddA-${id}`);
-            const oddBEl = document.getElementById(`oddB-${id}`);
-            if(oddAEl) oddAEl.innerText = oA;
-            if(oddBEl) oddBEl.innerText = oB;
+            // Alimenta os "Pesos" ocultos que vão para o Firebase para que o Motor Pari-Mutuel 
+            // abra a partida mantendo essas proporções perfeitas que você definiu.
+            let phantomTotal = valTotal * 0.2; // Liquidez fantasma proporcional
+            document.getElementById(`pA-${id}`).value = Math.floor(phantomTotal * pA_dec) || 1;
+            document.getElementById(`pB-${id}`).value = Math.floor(phantomTotal * pB_dec) || 1;
         }
 
         function salvarPesos(id) { 
@@ -568,11 +581,12 @@
             const vA = parseInt(document.getElementById(`volA-${id}`).value) || 0;
             const vB = parseInt(document.getElementById(`volB-${id}`).value) || 0;
             const probA = parseInt(document.getElementById(`probA-${id}`).value) || 50;
+            const riscoCalc = parseInt(document.getElementById(`risco-${id}`).value) || 0;
             
             db.collection('partidas').doc(id).update({ 
-                poolA: parseInt(document.getElementById(`pA-${id}`).value) || 0, 
-                poolB: parseInt(document.getElementById(`pB-${id}`).value) || 0, 
-                risco: parseInt(document.getElementById(`risco-${id}`).value) || 0,
+                poolA: parseInt(document.getElementById(`pA-${id}`).value) || 1, 
+                poolB: parseInt(document.getElementById(`pB-${id}`).value) || 1, 
+                risco: riscoCalc,
                 volEsperado: volInp,
                 volA: vA,
                 volB: vB,
