@@ -87,12 +87,19 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
-        // CONFIGURAÇÕES DE ALTO VOLUME E ALTA PROTEÇÃO
-        const TAXA_CASA = 0.20; // 20% de fatia da casa
         const OVERROUND = 1.10; 
-        const RISCO_CASA = 2000; // Padrão se o admin não gerar pelo assistente
         
         let faseAtual = 'Oitavas', dadosUsuario = null, unsubscribePartidas = null, unsubscribeHistorico = null;
+
+        function formatarDataHora(dataString) {
+            if (!dataString) return '';
+            const data = new Date(dataString);
+            const dia = String(data.getDate()).padStart(2, '0');
+            const mes = String(data.getMonth() + 1).padStart(2, '0');
+            const hora = String(data.getHours()).padStart(2, '0');
+            const min = String(data.getMinutes()).padStart(2, '0');
+            return `${dia}/${mes} às ${hora}:${min}`;
+        }
 
         function mostrarPix() { document.getElementById('modal-pix').classList.remove('hidden'); }
         function fecharPix() { document.getElementById('modal-pix').classList.add('hidden'); }
@@ -188,19 +195,31 @@
             });
         }
 
+        // ================= A EQUAÇÃO DOURADA DE LIABILITY (Sincronizada com o Admin) =================
         function calcularDados(p) {
-            let volumeA = p.poolA, volumeB = p.poolB, total = volumeA + volumeB;
-            if (total === 0) { volumeA = 100; volumeB = 100; total = 200; }
+            let volumeA = p.poolA || 1, volumeB = p.poolB || 1, total = volumeA + volumeB;
+            let riscoAtual = p.risco || 500;
             
-            let riscoAtual = p.risco || RISCO_CASA;
+            // Calculando as Odds Exatas
+            let oddA_str = Math.max(1.01, (total / (volumeA * OVERROUND))).toFixed(2);
+            let oddB_str = Math.max(1.01, (total / (volumeB * OVERROUND))).toFixed(2);
             
-            let oddA = (total / (volumeA * OVERROUND)).toFixed(2), oddB = (total / (volumeB * OVERROUND)).toFixed(2);
-            let limA = Math.floor(((p.realB + riscoAtual) * (1-TAXA_CASA) - p.realA * (parseFloat(oddA)-1+TAXA_CASA)) / (parseFloat(oddA)-1+TAXA_CASA));
-            let limB = Math.floor(((p.realA + riscoAtual) * (1-TAXA_CASA) - p.realB * (parseFloat(oddB)-1+TAXA_CASA)) / (parseFloat(oddB)-1+TAXA_CASA));
-            return { oddA: Math.max(1.01, oddA), oddB: Math.max(1.01, oddB), limA: Math.max(0, limA), limB: Math.max(0, limB) };
+            let oddA_num = parseFloat(oddA_str);
+            let oddB_num = parseFloat(oddB_str);
+            
+            // O cálculo de limite baseia-se no quanto do risco ainda está disponível.
+            // Limite = (Risco_Max + Apostas_no_Adversario) / (Odd - 1) - Apostas_Já_Feitas_Nesse_Lado
+            let limA = Math.floor(((riscoAtual + (p.realB || 0)) / (oddA_num - 1)) - (p.realA || 0));
+            let limB = Math.floor(((riscoAtual + (p.realA || 0)) / (oddB_num - 1)) - (p.realB || 0));
+
+            // Proteções contra erros matemáticos se a Odd for 1.00
+            if (!isFinite(limA) || limA < 0) limA = 0;
+            if (!isFinite(limB) || limB < 0) limB = 0;
+
+            return { oddA: oddA_str, oddB: oddB_str, limA: limA, limB: limB };
         }
 
-        // ===================== RENDERIZAÇÃO DE PARTIDAS CORRIGIDA =====================
+        // ===================== RENDERIZAÇÃO DE PARTIDAS =====================
         function mudarFase(f) {
             if(unsubscribeHistorico) unsubscribeHistorico();
             faseAtual = f; atualizarCoresMenu(f);
@@ -211,19 +230,28 @@
                 container.innerHTML = '';
                 if (snapshot.empty) return container.innerHTML = '<p class="text-center text-gray-500 mt-10">Nenhuma partida programada.</p>';
                 let ativas = 0;
-                snapshot.forEach(doc => {
-                    const p = doc.data(), id = doc.id;
+                
+                // Ordenação para colocar os jogos com data mais próximos em cima
+                let partidasDoc = [];
+                snapshot.forEach(doc => partidasDoc.push({id: doc.id, ...doc.data()}));
+                partidasDoc.sort((a, b) => (a.dataJogo && b.dataJogo) ? new Date(a.dataJogo) - new Date(b.dataJogo) : -1);
+
+                partidasDoc.forEach(p => {
+                    const id = p.id;
                     if (p.status === 'preparacao') return; 
                     
                     ativas++;
                     const c = calcularDados(p);
                     let statusVisual = '';
+                    let dataTag = p.dataJogo ? `<div class="text-center mb-2"><span class="bg-gray-900 text-gray-400 px-3 py-1 rounded-full text-[10px] font-bold border border-gray-700 tracking-wider uppercase">🗓️ ${formatarDataHora(p.dataJogo)}</span></div>` : '';
                     
-                    // Identifica se a partida está Encerrada, Anulada ou Aberta
                     if (p.status === 'finalizada') {
                         statusVisual = `<div class="mt-4 p-2 bg-gray-700 rounded text-center border border-gray-600"><span class="text-xs text-gray-400">Partida Encerrada</span><br><span class="font-bold text-yellow-400">Vencedor: ${p.vencedor === 'A' ? p.jogA : p.jogB} 🏆</span></div>`;
                     } else if (p.status === 'anulada') {
                         statusVisual = `<div class="mt-4 p-2 bg-red-900/30 rounded text-center border border-red-800"><span class="text-xs text-red-500 font-bold uppercase">⚠️ Partida Anulada</span><br><span class="text-[10px] text-gray-400">Apostas foram estornadas</span></div>`;
+                    } else if (p.status === 'bloqueada') {
+                        // NOVO: Renderiza a partida mas tranca os botões
+                        statusVisual = `<div class="mt-4 p-3 bg-yellow-900/30 rounded text-center border border-yellow-800"><span class="text-xs text-yellow-500 font-black uppercase">🔒 Apostas Encerradas</span><br><span class="text-[10px] text-gray-400">A partida começou e o mercado foi fechado.</span></div>`;
                     } else {
                         statusVisual = `<div class="flex gap-3 mt-4">
                             <button onclick="apostar('${id}', 'A')" class="flex-1 bg-gray-700 hover:bg-green-700 p-2 rounded-lg border border-gray-600 shadow-sm transition"><span class="block text-green-400 font-black text-xl">${c.oddA}</span><span class="text-[9px] text-gray-400">Lim: ${c.limA} F.</span></button>
@@ -233,6 +261,7 @@
                     
                     container.innerHTML += `
                         <div class="bg-gray-800 rounded-xl p-4 mb-4 border border-gray-700 shadow-lg">
+                            ${dataTag}
                             <div class="flex justify-between items-center bg-gray-900 p-3 rounded-lg border border-gray-700"><span class="font-bold text-sm w-5/12 text-center">${p.jogA}</span><span class="text-gray-600 text-[10px] font-black italic">VS</span><span class="font-bold text-sm w-5/12 text-center">${p.jogB}</span></div>
                             ${statusVisual}
                         </div>`;
@@ -241,7 +270,7 @@
             });
         }
 
-        // ===================== HISTÓRICO CORRIGIDO =====================
+        // ===================== HISTÓRICO =====================
         function mostrarHistorico() {
             if(unsubscribePartidas) unsubscribePartidas();
             atualizarCoresMenu('Historico');
@@ -261,7 +290,6 @@
                 apostas.forEach(a => {
                     let cor = 'border-gray-600', ico = '⏳', txt = 'Aguardando jogo...';
                     
-                    // Adicionado o marcador visual de Anulada
                     if(a.resultado === 'ganhou') { cor = 'border-green-500'; ico = '✅'; txt = `<span class="text-green-400 font-bold">+${a.premio} Fichas</span>`; } 
                     else if(a.resultado === 'perdeu') { cor = 'border-red-500'; ico = '❌'; txt = `<span class="text-red-400">Perdeu</span>`; }
                     else if(a.resultado === 'anulada') { cor = 'border-red-800'; ico = '⚠️'; txt = `<span class="text-red-400 font-bold uppercase">Estornada</span>`; }
@@ -278,16 +306,22 @@
 
         async function apostar(id, escolha) {
             const partidaRef = db.collection('partidas').doc(id), userRef = db.collection('usuarios').doc(auth.currentUser.uid);
-            const pDoc = await partidaRef.get(), p = pDoc.data(), c = calcularDados(p);
+            const pDoc = await partidaRef.get(), p = pDoc.data();
+            
+            if (p.status === 'bloqueada') return alert("As apostas para esta partida já foram encerradas!");
+            
+            const c = calcularDados(p);
             const lim = escolha === 'A' ? c.limA : c.limB, odd = escolha === 'A' ? c.oddA : c.oddB, nomeEsc = escolha === 'A' ? p.jogA : p.jogB;
 
             let valor = parseInt(prompt(`Apostar em ${nomeEsc}\nOdd: ${odd}\nLim: ${lim} Fichas\n\nValor da aposta:`));
-            if (!valor || valor <= 0 || valor > dadosUsuario.saldo || valor > lim) return alert("Aposta inválida, acima do limite ou você não tem saldo suficiente.");
+            if (!valor || valor <= 0) return;
+            if (valor > dadosUsuario.saldo) return alert("Você não tem saldo suficiente para esta aposta.");
+            if (valor > lim) return alert(`Aposta recusada pela banca. O limite máximo para esta cotação no momento é de ${lim} Fichas.`);
 
             db.runTransaction(async (transaction) => {
                 transaction.update(userRef, { saldo: dadosUsuario.saldo - valor, totalApostado: firebase.firestore.FieldValue.increment(valor) });
-                if (escolha === 'A') transaction.update(partidaRef, { poolA: p.poolA + valor, realA: p.realA + valor });
-                else transaction.update(partidaRef, { poolB: p.poolB + valor, realB: p.realB + valor });
+                if (escolha === 'A') transaction.update(partidaRef, { poolA: p.poolA + valor, realA: (p.realA || 0) + valor });
+                else transaction.update(partidaRef, { poolB: p.poolB + valor, realB: (p.realB || 0) + valor });
             }).then(() => {
                 db.collection('apostas').add({ uid: auth.currentUser.uid, partidaId: id, jogA: p.jogA, jogB: p.jogB, escolha: escolha, escolhaNome: nomeEsc, valor: valor, oddTravada: odd, resultado: 'pendente', premio: 0, data: new Date().getTime() });
                 alert("✅ Aposta Registrada com Sucesso!");
