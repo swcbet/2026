@@ -17,15 +17,12 @@
     <div id="tela-telao" class="hidden fixed inset-0 bg-gray-950 z-[200] flex flex-col items-center justify-evenly p-4 md:p-8 h-screen max-h-screen overflow-hidden box-border">
         <button onclick="fecharTelao()" class="absolute top-4 right-6 text-gray-500 hover:text-white font-black text-3xl md:text-4xl transition z-10">&times;</button>
         
-        <!-- HEADER -->
         <div class="text-center flex flex-col items-center justify-center shrink-0 mt-2">
             <h1 class="text-2xl md:text-4xl lg:text-5xl font-black text-yellow-500 mb-1 uppercase tracking-[0.2em] drop-shadow-md">Apostas Abertas</h1>
             <p class="text-gray-400 text-xs md:text-sm lg:text-base uppercase tracking-widest font-bold animate-pulse">Escaneie o QR Code e faça sua entrada</p>
         </div>
         
-        <!-- CARDS -->
         <div class="flex justify-between items-center w-full max-w-6xl gap-2 md:gap-6 lg:gap-12 shrink my-2">
-            <!-- JOGADOR A -->
             <div class="flex-1 flex flex-col items-center min-w-0">
                 <h2 id="telao-jogA" class="text-3xl md:text-5xl lg:text-6xl font-black text-white mb-2 md:mb-4 text-center drop-shadow-lg truncate w-full px-2">Jog A</h2>
                 <div class="bg-gray-900 rounded-2xl md:rounded-[2rem] p-4 md:p-8 lg:p-10 border-4 border-blue-500 shadow-[0_0_30px_rgba(59,130,246,0.3)] w-full text-center relative overflow-hidden flex flex-col justify-center items-center">
@@ -37,7 +34,6 @@
             
             <div class="text-3xl md:text-6xl font-black text-gray-700 italic px-2 shrink-0">VS</div>
             
-            <!-- JOGADOR B -->
             <div class="flex-1 flex flex-col items-center min-w-0">
                 <h2 id="telao-jogB" class="text-3xl md:text-5xl lg:text-6xl font-black text-white mb-2 md:mb-4 text-center drop-shadow-lg truncate w-full px-2">Jog B</h2>
                 <div class="bg-gray-900 rounded-2xl md:rounded-[2rem] p-4 md:p-8 lg:p-10 border-4 border-purple-500 shadow-[0_0_30px_rgba(168,85,247,0.3)] w-full text-center relative overflow-hidden flex flex-col justify-center items-center">
@@ -48,7 +44,6 @@
             </div>
         </div>
 
-        <!-- QR CODE -->
         <div class="flex flex-col items-center bg-gray-800 p-3 md:p-4 lg:p-5 rounded-2xl md:rounded-3xl border border-gray-700 shadow-2xl shrink-0 scale-90 md:scale-100 transform origin-bottom mb-2">
             <div id="qrcode-container" class="bg-white p-2 md:p-3 rounded-xl shadow-inner flex items-center justify-center"></div>
             <p id="telao-url-display" class="mt-2 md:mt-3 text-gray-400 font-mono text-[10px] md:text-sm"></p>
@@ -56,8 +51,9 @@
     </div>
     <!-- ======================================================= -->
 
+    <!-- MODAL DE APOSTAS -->
     <div id="modal-apostas" class="hidden fixed inset-0 bg-black bg-opacity-80 z-[100] flex items-center justify-center p-4">
-        <div class="bg-gray-800 p-6 rounded-2xl border border-indigo-800 shadow-2xl w-full max-w-md relative flex flex-col max-h-[80vh]">
+        <div class="bg-gray-800 p-6 rounded-2xl border border-indigo-800 shadow-2xl w-full max-w-lg relative flex flex-col max-h-[80vh]">
             <button onclick="fecharModalApostas()" class="absolute top-3 right-4 text-gray-400 hover:text-white font-bold text-xl">&times;</button>
             <h2 id="titulo-modal-apostas" class="text-lg font-bold text-indigo-400 mb-4 text-center">🧾 Apostas da Partida</h2>
             <div class="overflow-y-auto hide-scroll flex-1">
@@ -67,8 +63,8 @@
                             <th class="pb-2">Usuário</th>
                             <th class="pb-2 text-center">Escolha</th>
                             <th class="pb-2 text-right">Valor</th>
-                            <th class="pb-2 text-right">Odd Pega</th>
-                            <th class="pb-2 text-right">Status</th>
+                            <th class="pb-2 text-right">Odd</th>
+                            <th class="pb-2 text-center">Ação</th>
                         </tr>
                     </thead>
                     <tbody id="tabela-modal-apostas"></tbody>
@@ -77,6 +73,7 @@
         </div>
     </div>
 
+    <!-- TELA DE LOGIN -->
     <div id="tela-login-admin" class="min-h-screen flex items-center justify-center p-4">
         <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-red-900">
             <h2 class="text-2xl font-black text-red-500 mb-2 text-center">🔐 SWC-Bet Admin</h2>
@@ -87,6 +84,7 @@
         </div>
     </div>
 
+    <!-- PAINEL PRINCIPAL -->
     <div id="painel-admin" class="hidden">
         <header class="bg-gray-800 p-4 shadow-md sticky top-0 z-50 border-b border-gray-700">
             <h1 class="text-xl font-black text-red-500 text-center mb-4">⚙️ Painel da Banca</h1>
@@ -95,10 +93,12 @@
                 <button onclick="mudarAbaAdmin('Financeiro')" id="btn-Financeiro" class="flex-1 min-w-[70px] bg-gray-700 py-2 rounded-md font-bold text-xs transition shadow-md">💰 Finanças</button>
                 <button onclick="mudarAbaAdmin('Historico')" id="btn-Historico" class="flex-1 min-w-[70px] bg-gray-700 py-2 rounded-md font-bold text-xs transition shadow-md">📈 Histórico</button>
                 <button onclick="mudarAbaAdmin('Sistema')" id="btn-Sistema" class="flex-1 min-w-[70px] bg-gray-700 py-2 rounded-md font-bold text-xs transition shadow-md">⚙️ Sistema</button>
+                <button onclick="mudarAbaAdmin('Logs')" id="btn-Logs" class="flex-1 min-w-[70px] bg-gray-700 py-2 rounded-md font-bold text-xs transition shadow-md text-yellow-400 border border-gray-600">📜 Auditoria</button>
             </nav>
         </header>
 
         <main class="max-w-md mx-auto p-4 flex flex-col gap-6">
+            
             <!-- ABA PARTIDAS -->
             <div id="aba-Partidas" class="flex flex-col gap-6">
                 <div class="bg-gray-800 p-6 rounded-xl border border-blue-800 shadow-lg relative overflow-hidden">
@@ -133,7 +133,7 @@
                 </div>
             </div>
 
-            <!-- OUTRAS ABAS (MANTIDAS IGUAIS) -->
+            <!-- ABA FINANCEIRO -->
             <div id="aba-Financeiro" class="hidden flex flex-col gap-6 text-center">
                 <div class="bg-gray-800 p-6 rounded-xl border border-yellow-600 shadow-lg">
                     <h2 class="text-lg font-bold text-yellow-400 mb-4">📊 Livro-Caixa (R$)</h2>
@@ -151,17 +151,16 @@
                 <div id="lista-saques" class="flex flex-col gap-3"></div>
             </div>
 
+            <!-- ABA HISTÓRICO -->
             <div id="aba-Historico" class="hidden flex flex-col gap-6">
                 <div class="bg-gray-900 p-4 rounded-xl border border-blue-900 shadow-lg">
                     <h2 class="text-lg font-bold text-blue-400 mb-4 text-center">📈 Relatório de Partidas</h2>
-                    <p class="text-[10px] text-gray-400 mb-4 text-center">Compare sua projeção inicial com a realidade e audite as apostas.</p>
                     <div class="overflow-x-auto">
                         <table class="w-full text-left text-[10px]">
                             <thead>
                                 <tr class="text-gray-400 border-b border-gray-700 uppercase">
                                     <th class="pb-2">Partida</th>
                                     <th class="pb-2 text-center text-gray-300">Vol. Esp</th>
-                                    <th class="pb-2 text-center text-gray-300">Odd Inic.</th>
                                     <th class="pb-2 text-center text-blue-400">Vol. Real</th>
                                     <th class="pb-2 text-center text-blue-400">Odd Atual</th>
                                     <th class="pb-2 text-right text-green-400">Lucro</th>
@@ -174,6 +173,7 @@
                 </div>
             </div>
 
+            <!-- ABA SISTEMA -->
             <div id="aba-Sistema" class="hidden flex flex-col gap-6">
                 <div class="bg-gray-900 p-4 rounded-xl border border-gray-700 shadow-lg text-center">
                     <h2 class="text-lg font-bold text-white mb-4">👥 Gestão de Usuários</h2>
@@ -197,6 +197,27 @@
                     </div>
                 </div>
             </div>
+
+            <!-- NOVA ABA DE LOGS/AUDITORIA -->
+            <div id="aba-Logs" class="hidden flex flex-col gap-6">
+                <div class="bg-gray-900 p-4 rounded-xl border border-yellow-800 shadow-lg">
+                    <h2 class="text-lg font-bold text-yellow-500 mb-2 text-center">📜 Histórico de Ações (Auditoria)</h2>
+                    <p class="text-[10px] text-gray-400 mb-4 text-center">Rastreia creditamentos, exclusões e ajustes do sistema.</p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-[9px] font-mono">
+                            <thead>
+                                <tr class="text-gray-500 border-b border-gray-700 uppercase">
+                                    <th class="pb-2 w-1/4">Data</th>
+                                    <th class="pb-2 w-1/4">Admin</th>
+                                    <th class="pb-2 w-1/2">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tabela-logs" class="text-gray-300"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
         </main>
     </div>
 
@@ -222,20 +243,29 @@
         let mapaUsuarios = {};
         
         // ================= CONFIGURAÇÃO DO TELÃO =================
-        // COLOQUE AQUI O LINK REAL DA PÁGINA ONDE OS JOGADORES APOSTAM
         const URL_DO_SEU_SITE = "https://swcbet.github.io/2026/"; 
-        
-        let telaoAtivoId = null; // Guarda o ID da partida que está sendo exibida no telão
-        let qrCodeGerado = null; // Variável para controlar o desenho do QR Code
+        let telaoAtivoId = null;
+        let qrCodeGerado = null;
 
-        function formatarDataHora(dataString) {
-            if (!dataString) return '';
-            const data = new Date(dataString);
+        // ================= FUNÇÃO DE AUDITORIA (NOVA) =================
+        function registrarLog(acao, detalhes) {
+            const adminEmail = auth.currentUser ? auth.currentUser.email : 'Sistema';
+            db.collection('admin_logs').add({
+                acao: acao,
+                detalhes: detalhes,
+                admin: adminEmail,
+                data: new Date().getTime()
+            });
+        }
+
+        function formatarDataHora(dataStringOrMs) {
+            if (!dataStringOrMs) return '';
+            const data = new Date(dataStringOrMs);
             const dia = String(data.getDate()).padStart(2, '0');
             const mes = String(data.getMonth() + 1).padStart(2, '0');
             const hora = String(data.getHours()).padStart(2, '0');
             const min = String(data.getMinutes()).padStart(2, '0');
-            return `${dia}/${mes} às ${hora}:${min}`;
+            return `${dia}/${mes} ${hora}:${min}`;
         }
 
         function entrarAdmin() {
@@ -253,19 +283,20 @@
                     document.getElementById('painel-admin').classList.remove('hidden');
                     iniciarPainelAdmin(); 
                 } else {
-                    alert("⛔ ACESSO NEGADO! Você não tem permissão para entrar na Banca.");
+                    alert("⛔ ACESSO NEGADO! Você não tem permissão.");
                     auth.signOut();
                 }
             }
         });
 
         function mudarAbaAdmin(aba) {
-            ['Partidas', 'Financeiro', 'Historico', 'Sistema'].forEach(id => {
+            ['Partidas', 'Financeiro', 'Historico', 'Sistema', 'Logs'].forEach(id => {
                 document.getElementById(`aba-${id}`).classList.add('hidden');
                 document.getElementById(`btn-${id}`).classList.replace('bg-red-600', 'bg-gray-700');
             });
             document.getElementById(`aba-${aba}`).classList.remove('hidden');
             document.getElementById(`btn-${aba}`).classList.replace('bg-gray-700', 'bg-red-600');
+            if (aba === 'Logs') document.getElementById('btn-Logs').classList.add('text-yellow-400');
         }
 
         function iniciarPainelAdmin() {
@@ -289,7 +320,7 @@
                 const l = document.getElementById('lista-depositos'); l.innerHTML = '';
                 snap.forEach(doc => {
                     const d = doc.data();
-                    l.innerHTML += `<div class="bg-gray-900 p-3 rounded border border-gray-700 flex justify-between items-center mb-2"><div><p class="font-bold text-sm">${d.nome}</p><p class="text-green-400 text-xs font-bold">R$ ${d.reais} ➔ ${d.fichas} F</p></div><button onclick="aprovarDeposito('${doc.id}', '${d.uid}', ${d.fichas})" class="bg-green-600 px-4 py-1 rounded text-xs font-bold shadow hover:bg-green-500">Aprovar</button></div>`;
+                    l.innerHTML += `<div class="bg-gray-900 p-3 rounded border border-gray-700 flex justify-between items-center mb-2"><div><p class="font-bold text-sm">${d.nome}</p><p class="text-green-400 text-xs font-bold">R$ ${d.reais} ➔ ${d.fichas} F</p></div><button onclick="aprovarDeposito('${doc.id}', '${d.uid}', ${d.fichas}, '${d.nome}', ${d.reais})" class="bg-green-600 px-4 py-1 rounded text-xs font-bold shadow hover:bg-green-500">Aprovar</button></div>`;
                 });
             });
 
@@ -306,8 +337,8 @@
                                 <button onclick="navigator.clipboard.writeText('${s.chavePix}').then(() => alert('Copiada!'))" class="bg-gray-700 px-2 py-1 rounded text-[9px] hover:bg-gray-600">Copiar</button>
                             </div>
                             <div class="flex gap-2">
-                                <button onclick="recusarSaque('${doc.id}', '${s.uid}', ${s.fichas})" class="flex-1 bg-gray-700 hover:bg-gray-600 py-1 rounded text-xs font-bold">❌ Recusar</button>
-                                <button onclick="marcarSaquePago('${doc.id}')" class="flex-1 bg-red-700 hover:bg-red-600 py-1 rounded text-xs font-bold">✅ Pago</button>
+                                <button onclick="recusarSaque('${doc.id}', '${s.uid}', ${s.fichas}, '${s.nome}')" class="flex-1 bg-gray-700 hover:bg-gray-600 py-1 rounded text-xs font-bold">❌ Recusar</button>
+                                <button onclick="marcarSaquePago('${doc.id}', '${s.nome}', ${s.reais})" class="flex-1 bg-red-700 hover:bg-red-600 py-1 rounded text-xs font-bold">✅ Pago</button>
                             </div>
                         </div>`;
                 });
@@ -325,10 +356,20 @@
                 });
             });
 
+            // LOGS AUDITORIA (NOVO)
+            db.collection('admin_logs').orderBy('data', 'desc').limit(50).onSnapshot(snap => {
+                const t = document.getElementById('tabela-logs');
+                t.innerHTML = '';
+                snap.forEach(doc => {
+                    const l = doc.data();
+                    const adminCurto = l.admin.split('@')[0]; // Mostra só antes do @
+                    t.innerHTML += `<tr class="border-b border-gray-800 hover:bg-gray-800 transition"><td class="py-2">${formatarDataHora(l.data)}</td><td class="py-2 text-blue-400">${adminCurto}</td><td class="py-2"><span class="font-bold text-yellow-400">${l.acao}</span><br><span class="text-[8px] text-gray-400">${l.detalhes}</span></td></tr>`;
+                });
+            });
+
             // PARTIDAS RASCUNHO
             db.collection('partidas').where('status', '==', 'preparacao').onSnapshot(snap => {
                 const l = document.getElementById('lista-preparacao'); l.innerHTML = '';
-                
                 let rascunhos = [];
                 snap.forEach(d => rascunhos.push({id: d.id, ...d.data()}));
                 
@@ -380,7 +421,7 @@
                             <div class="flex gap-2">
                                 <button onclick="deletarRascunho('${id}', '${p.jogA}', '${p.jogB}')" class="bg-gray-800 px-3 py-2 rounded text-[10px] text-red-500 border border-red-900 hover:bg-red-900 hover:text-white transition">Excluir</button>
                                 <button onclick="salvarPesos('${id}')" id="btn-salvar-${id}" class="flex-1 bg-gray-700 py-2 rounded text-[10px] font-bold hover:bg-gray-600 transition">Salvar Edições</button>
-                                <button onclick="abrirApostas('${id}')" class="flex-1 bg-green-600 py-2 rounded text-[10px] font-bold hover:bg-green-500 transition shadow">ABRIR APOSTAS</button>
+                                <button onclick="abrirApostas('${id}', '${p.jogA} x ${p.jogB}')" class="flex-1 bg-green-600 py-2 rounded text-[10px] font-bold hover:bg-green-500 transition shadow">ABRIR APOSTAS</button>
                             </div>
                         </div>`;
                 });
@@ -392,7 +433,6 @@
                 const lHistorico = document.getElementById('tabela-historico-partidas'); lHistorico.innerHTML = '';
                 
                 let temHistorico = false;
-                
                 let partidasEmAberto = [];
                 snap.forEach(d => partidasEmAberto.push({id: d.id, ...d.data()}));
 
@@ -406,7 +446,6 @@
                         document.getElementById('telao-oddA').innerText = oddAtual.oA;
                         document.getElementById('telao-oddB').innerText = oddAtual.oB;
                     }
-                    // ====================================================================
 
                     if (p.status === 'aberta' || p.status === 'bloqueada') {
                         let btnBloqueio = p.status === 'aberta' 
@@ -415,7 +454,6 @@
 
                         let dataInputAberta = `<div class="mb-2"><input type="datetime-local" id="data-aberta-${p.id}" value="${p.dataJogo || ''}" onchange="atualizarDataAberta('${p.id}')" class="bg-gray-800 text-gray-400 px-2 py-1 rounded text-[10px] border border-gray-700 outline-none text-center hover:text-white transition w-32 cursor-pointer"></div>`;
                         
-                        // NOVO: BOTÃO DO TELÃO
                         let btnTelao = p.status === 'aberta' ? `<button onclick="abrirTelao('${p.id}', '${p.jogA}', '${p.jogB}', '${oddAtual.oA}', '${oddAtual.oB}')" class="w-full bg-blue-700 hover:bg-blue-600 py-2 rounded text-[10px] font-black uppercase text-white transition mb-3 shadow border border-blue-500">📺 Modo Telão</button>` : '';
 
                         lEncerrar.innerHTML += `
@@ -456,7 +494,6 @@
                             <tr class="border-b border-gray-800 hover:bg-gray-800 transition">
                                 <td class="py-3"><span class="font-bold text-white">${p.jogA} x ${p.jogB}</span><br>${statusBadge}</td>
                                 <td class="py-3 text-center text-gray-400 font-mono">${p.volEsperado || '-'}</td>
-                                <td class="py-3 text-center text-gray-400 font-mono">${p.oddInicialA || '-'} / ${p.oddInicialB || '-'}</td>
                                 <td class="py-3 text-center font-bold text-blue-400 font-mono">${volRecebido}</td>
                                 <td class="py-3 text-center font-bold text-white font-mono">${oddAtual.oA} / ${oddAtual.oB}</td>
                                 <td class="py-3 text-right font-mono text-sm">${lucroHtml}</td>
@@ -467,7 +504,7 @@
                     }
                 });
                 
-                if(!temHistorico) lHistorico.innerHTML = '<tr><td colspan="7" class="py-4 text-center text-gray-500">Nenhum histórico disponível.</td></tr>';
+                if(!temHistorico) lHistorico.innerHTML = '<tr><td colspan="6" class="py-4 text-center text-gray-500">Nenhum histórico disponível.</td></tr>';
             });
         }
 
@@ -481,25 +518,22 @@
             
             document.getElementById('telao-url-display').innerText = URL_DO_SEU_SITE;
             
-            // Gera o QR Code uma única vez para não duplicar
             document.getElementById('qrcode-container').innerHTML = '';
             qrCodeGerado = new QRCode(document.getElementById("qrcode-container"), {
                 text: URL_DO_SEU_SITE,
-                width: 180,
-                height: 180,
-                colorDark : "#000000",
-                colorLight : "#ffffff",
+                width: 150, height: 150,
+                colorDark : "#000000", colorLight : "#ffffff",
                 correctLevel : QRCode.CorrectLevel.H
             });
 
             document.getElementById('tela-telao').classList.remove('hidden');
+            registrarLog("MODO TELÃO", `Iniciou a transmissão da partida ID: ${id}`);
         }
 
         function fecharTelao() {
             telaoAtivoId = null;
             document.getElementById('tela-telao').classList.add('hidden');
         }
-        // =============================================================
 
         function atualizarDataAberta(id) {
             const novaData = document.getElementById(`data-aberta-${id}`).value;
@@ -517,36 +551,76 @@
             document.getElementById('modal-apostas').classList.remove('hidden');
 
             try {
-                const snap = await db.collection('apostas').where('partidaId', '==', partidaId).get();
-                tb.innerHTML = '';
-                if(snap.empty) return tb.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Ninguém apostou nesta partida ainda.</td></tr>';
+                // Ao buscar as apostas, salva e exibe em tempo real
+                db.collection('apostas').where('partidaId', '==', partidaId).onSnapshot(snap => {
+                    tb.innerHTML = '';
+                    if(snap.empty) return tb.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Ninguém apostou nesta partida ainda.</td></tr>';
 
-                let apostas = [];
-                snap.forEach(doc => apostas.push(doc.data()));
-                apostas.sort((a, b) => b.data - a.data);
+                    let apostas = [];
+                    snap.forEach(doc => apostas.push({ id: doc.id, ...doc.data() }));
+                    apostas.sort((a, b) => b.data - a.data);
 
-                apostas.forEach(a => {
-                    const nomeUser = mapaUsuarios[a.uid] || 'Desconhecido';
-                    let statusHtml = '<span class="text-gray-400">Pendente</span>';
-                    if(a.resultado === 'ganhou') statusHtml = `<span class="text-green-400 font-bold">+${a.premio}</span>`;
-                    else if(a.resultado === 'perdeu') statusHtml = `<span class="text-red-400">Perdeu</span>`;
-                    else if(a.resultado === 'anulada') statusHtml = `<span class="text-red-500 font-bold">Estornada</span>`;
+                    apostas.forEach(a => {
+                        const nomeUser = mapaUsuarios[a.uid] || 'Desconhecido';
+                        
+                        // Lógica visual de status (quando finaliza)
+                        let statusHtml = '<span class="text-gray-400">Ao Vivo</span>';
+                        if(a.resultado === 'ganhou') statusHtml = `<span class="text-green-400 font-bold">+${a.premio}</span>`;
+                        else if(a.resultado === 'perdeu') statusHtml = `<span class="text-red-400">Perdeu</span>`;
+                        else if(a.resultado === 'anulada') statusHtml = `<span class="text-red-500 font-bold">Estornada</span>`;
 
-                    tb.innerHTML += `
-                        <tr class="border-b border-gray-700 hover:bg-gray-700 transition">
-                            <td class="py-3 font-bold text-white">${nomeUser}</td>
-                            <td class="py-3 text-center text-yellow-400 font-bold">${a.escolhaNome}</td>
-                            <td class="py-3 text-right font-mono">${a.valor} F</td>
-                            <td class="py-3 text-right font-mono">${a.oddTravada}</td>
-                            <td class="py-3 text-right">${statusHtml}</td>
-                        </tr>`;
+                        // NOVO: BOTÃO DE DELETAR APOSTA
+                        // Só permite deletar se a partida ainda estiver rodando ('pendente')
+                        let btnExcluir = a.resultado === 'pendente' 
+                            ? `<button onclick="excluirApostaEspecifica('${a.id}', '${partidaId}', '${a.escolha}', ${a.valor}, '${nomeUser}')" class="bg-gray-700 hover:bg-red-700 px-2 py-1 rounded text-white text-[10px] transition border border-gray-600">🗑️</button>` 
+                            : `<span class="text-gray-600">-</span>`;
+
+                        tb.innerHTML += `
+                            <tr class="border-b border-gray-700 hover:bg-gray-700 transition">
+                                <td class="py-3 font-bold text-white">${nomeUser}</td>
+                                <td class="py-3 text-center text-yellow-400 font-bold">${a.escolhaNome}</td>
+                                <td class="py-3 text-right font-mono">${a.valor} F</td>
+                                <td class="py-3 text-right font-mono">${a.oddTravada}</td>
+                                <td class="py-3 text-center">${btnExcluir}</td>
+                            </tr>`;
+                    });
                 });
             } catch(e) { tb.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Erro: ${e.message}</td></tr>`; }
+        }
+
+        // ================= FUNÇÃO DE EXCLUIR APOSTA DO HACKER (NOVA) =================
+        async function excluirApostaEspecifica(apostaId, partidaId, escolha, valor, nomeUser) {
+            if(!confirm(`⚠️ DELETAR APOSTA DE ${valor} FICHAS?\nIsso vai remover a aposta e restaurar o volume da partida.\nConfirma?`)) return;
+
+            const batch = db.batch();
+            
+            // 1. Apaga a aposta
+            batch.delete(db.collection('apostas').doc(apostaId));
+            
+            // 2. Tira o volume falso da partida para consertar a Odd
+            const desc = { poolA: 0, poolB: 0, realA: 0, realB: 0 };
+            if (escolha === 'A') {
+                desc.poolA = -valor; desc.realA = -valor;
+            } else {
+                desc.poolB = -valor; desc.realB = -valor;
+            }
+            
+            batch.update(db.collection('partidas').doc(partidaId), {
+                poolA: firebase.firestore.FieldValue.increment(desc.poolA),
+                poolB: firebase.firestore.FieldValue.increment(desc.poolB),
+                realA: firebase.firestore.FieldValue.increment(desc.realA),
+                realB: firebase.firestore.FieldValue.increment(desc.realB)
+            });
+
+            await batch.commit();
+            registrarLog("APOSTA CANCELADA/DELETADA", `Removeu aposta de ${valor}F feita por ${nomeUser}`);
+            alert("Aposta removida e mercado reajustado.");
         }
 
         function bloquearApostas(id) {
             if(confirm("Deseja bloquear o mercado para este jogo? Ninguém mais poderá apostar.")) {
                 db.collection('partidas').doc(id).update({ status: 'bloqueada' });
+                registrarLog("MERCADO BLOQUEADO", `Fechou apostas para a partida ID: ${id}`);
             }
         }
 
@@ -565,83 +639,52 @@
             });
             batch.update(db.collection('partidas').doc(id), { status: 'anulada', lucroCasa: 0 });
             await batch.commit();
+            registrarLog("PARTIDA ANULADA", `Anulou o jogo ${jogA} x ${jogB} e estornou fichas.`);
             alert("Partida anulada e fichas devolvidas com sucesso.");
         }
 
         async function deletarRascunho(id, jogA, jogB) {
-            if(confirm(`Deseja apagar o rascunho de ${jogA} vs ${jogB}?`)) await db.collection('partidas').doc(id).delete();
+            if(confirm(`Deseja apagar o rascunho de ${jogA} vs ${jogB}?`)){
+                await db.collection('partidas').doc(id).delete();
+                registrarLog("RASCUNHO EXCLUÍDO", `Deletou rascunho de ${jogA} x ${jogB}`);
+            } 
         }
 
-        function aprovarDeposito(docId, uid, fichas) {
+        function aprovarDeposito(docId, uid, fichas, nomeUser, reais) {
             const b = db.batch(); b.update(db.collection('usuarios').doc(uid), { saldo: firebase.firestore.FieldValue.increment(fichas) });
             b.update(db.collection('depositos').doc(docId), { status: 'aprovado' }); b.commit();
+            registrarLog("DEPÓSITO APROVADO", `Liberou ${fichas}F para ${nomeUser} (R$${reais})`);
         }
-        function marcarSaquePago(id) { if(confirm('PIX enviado para o jogador?')) db.collection('saques').doc(id).update({ status: 'pago' }); }
-        function recusarSaque(docId, uid, fichas) {
+        function marcarSaquePago(id, nomeUser, reais) { 
+            if(confirm('PIX enviado para o jogador?')) {
+                db.collection('saques').doc(id).update({ status: 'pago' }); 
+                registrarLog("SAQUE PAGO", `Confirmou PIX de R$${reais} para ${nomeUser}`);
+            }
+        }
+        function recusarSaque(docId, uid, fichas, nomeUser) {
             if(confirm(`Devolver ${fichas} fichas para o usuário?`)) {
                 const b = db.batch(); b.update(db.collection('usuarios').doc(uid), { saldo: firebase.firestore.FieldValue.increment(fichas) });
                 b.update(db.collection('saques').doc(docId), { status: 'recusado' }); b.commit();
+                registrarLog("SAQUE RECUSADO", `Devolveu ${fichas}F para ${nomeUser}`);
             }
         }
         function adicionarFichas() {
-            const uid = document.getElementById('select-usuario').value, v = parseInt(document.getElementById('valor-fichas').value);
-            if(uid && v) db.collection('usuarios').doc(uid).update({ saldo: firebase.firestore.FieldValue.increment(v) });
-            document.getElementById('valor-fichas').value = '';
+            const combo = document.getElementById('select-usuario');
+            const uid = combo.value;
+            const nomeUser = combo.options[combo.selectedIndex].text;
+            const v = parseInt(document.getElementById('valor-fichas').value);
+            if(uid && v) {
+                db.collection('usuarios').doc(uid).update({ saldo: firebase.firestore.FieldValue.increment(v) });
+                registrarLog("EDIÇÃO DE SALDO MANUAL", `Adicionou/Removeu ${v}F na conta de ${nomeUser}`);
+                document.getElementById('valor-fichas').value = '';
+            }
         }
-       async function excluirConta(uid, nome) { 
-            const resp = prompt(`⚠️ ATENÇÃO!\nExcluir a conta de ${nome} e DELETAR todas as apostas dele?\nIsso reajustará o mercado.\n\nDigite APAGAR para confirmar:`);
-            
+        async function excluirConta(uid, nome) { 
+            const resp = prompt(`⚠️ ATENÇÃO!\nExcluir a conta de ${nome}?\nDigite APAGAR para confirmar:`);
             if (resp === 'APAGAR') { 
-                try {
-                    // 1. Busca todas as apostas feitas por esse usuário
-                    const apostasSnap = await db.collection('apostas').where('uid', '==', uid).get();
-                    
-                    const batch = db.batch();
-                    let descontosPartidas = {};
-
-                    // 2. Prepara a exclusão e calcula quanto dinheiro falso remover de cada partida
-                    apostasSnap.forEach(doc => {
-                        const aposta = doc.data();
-                        
-                        // Cria o registro da partida se ainda não existir no nosso cálculo
-                        if (!descontosPartidas[aposta.partidaId]) {
-                            descontosPartidas[aposta.partidaId] = { poolA: 0, poolB: 0, realA: 0, realB: 0 };
-                        }
-                        
-                        // Desconta o valor do lado que o hacker apostou
-                        if (aposta.escolha === 'A') {
-                            descontosPartidas[aposta.partidaId].poolA -= aposta.valor;
-                            descontosPartidas[aposta.partidaId].realA -= aposta.valor;
-                        } else {
-                            descontosPartidas[aposta.partidaId].poolB -= aposta.valor;
-                            descontosPartidas[aposta.partidaId].realB -= aposta.valor;
-                        }
-                        
-                        // Manda deletar o recibo da aposta
-                        batch.delete(doc.ref);
-                    });
-
-                    // 3. Devolve os volumes subtraídos para as partidas (Restaura as Odds originais)
-                    for (let partidaId in descontosPartidas) {
-                        const desc = descontosPartidas[partidaId];
-                        batch.update(db.collection('partidas').doc(partidaId), {
-                            poolA: firebase.firestore.FieldValue.increment(desc.poolA),
-                            poolB: firebase.firestore.FieldValue.increment(desc.poolB),
-                            realA: firebase.firestore.FieldValue.increment(desc.realA),
-                            realB: firebase.firestore.FieldValue.increment(desc.realB)
-                        });
-                    }
-
-                    // 4. Manda deletar o próprio usuário
-                    batch.delete(db.collection('usuarios').doc(uid));
-
-                    // 5. Executa a varredura completa de uma só vez (Operação Atômica)
-                    await batch.commit(); 
-                    
-                    alert('✅ Exorcismo concluído!\nConta apagada, apostas excluídas e Odds restauradas.');
-                } catch(err) {
-                    alert('Erro ao excluir conta: ' + err.message);
-                }
+                await db.collection('usuarios').doc(uid).delete(); 
+                registrarLog("CONTA EXCLUÍDA", `Deletou o usuário ${nome}`);
+                alert('Conta excluída.'); 
             }
         }
 
@@ -657,6 +700,7 @@
             const dataP = document.getElementById('data-partida').value;
             if(!a || !b) return alert("Digite os nomes dos jogadores.");
             db.collection('partidas').add({ fase: f, jogA: a, jogB: b, dataJogo: dataP || null, poolA: 100, poolB: 100, risco: 500, realA: 0, realB: 0, status: 'preparacao', probA: 50 });
+            registrarLog("PARTIDA CRIADA", `Novo rascunho: ${a} x ${b}`);
             document.getElementById('jogA').value = ''; document.getElementById('jogB').value = ''; document.getElementById('data-partida').value = '';
         }
         
@@ -738,11 +782,12 @@
             });
         }
 
-        async function abrirApostas(id) { 
+        async function abrirApostas(id, nomeJogo) { 
             const doc = await db.collection('partidas').doc(id).get();
             const p = doc.data();
             const odds = simularOdd(p.poolA, p.poolB);
             db.collection('partidas').doc(id).update({ status: 'aberta', oddInicialA: odds.oA, oddInicialB: odds.oB }); 
+            registrarLog("MERCADO ABERTO", `Abriu as apostas para: ${nomeJogo}`);
         }
 
         async function encerrarPartida(id, lado, nome) {
@@ -767,6 +812,7 @@
             const lucroParaABanca = volumeRecebidoReal - totalPagoAosVencedores;
             batch.update(db.collection('partidas').doc(id), { status: 'finalizada', vencedor: lado, lucroCasa: lucroParaABanca });
             await batch.commit();
+            registrarLog("PARTIDA ENCERRADA", `Vitória paga para ${nome} (${lado})`);
         }
 
         async function apagarPartidasFinalizadas() { 
@@ -775,14 +821,18 @@
             const batch = db.batch();
             const s1 = await db.collection('partidas').where('status', '==', 'finalizada').get(); s1.forEach(d => batch.delete(d.ref)); 
             const s2 = await db.collection('partidas').where('status', '==', 'anulada').get(); s2.forEach(d => batch.delete(d.ref)); 
-            await batch.commit(); alert('Partidas apagadas.');
+            await batch.commit(); 
+            registrarLog("LIMPEZA", "Apagou visualização de partidas encerradas/anuladas");
+            alert('Partidas apagadas.');
         }
 
         async function apagarHistoricoApostas() { 
             const resp = prompt('⚠️ PERIGO MÁXIMO!\nIsso apagará TODO o histórico de apostas.\n\nDigite APAGAR para confirmar:');
             if(resp !== 'APAGAR') return alert('Ação cancelada.');
             const s = await db.collection('apostas').get(); 
-            const batch = db.batch(); s.forEach(d => batch.delete(d.ref)); await batch.commit(); alert('Histórico de apostas limpo.');
+            const batch = db.batch(); s.forEach(d => batch.delete(d.ref)); await batch.commit(); 
+            registrarLog("LIMPEZA EXTREMA", "Limpou todo o banco de apostas");
+            alert('Histórico de apostas limpo.');
         }
 
         async function apagarLivroCaixa() {
@@ -791,7 +841,9 @@
             const batch = db.batch();
             const d = await db.collection('depositos').get(); d.forEach(doc => batch.delete(doc.ref));
             const s = await db.collection('saques').get(); s.forEach(doc => batch.delete(doc.ref));
-            await batch.commit(); alert('Livro-caixa zerado.');
+            await batch.commit(); 
+            registrarLog("LIMPEZA EXTREMA", "Zerou livro-caixa (depósitos e saques)");
+            alert('Livro-caixa zerado.');
         }
     </script>
 </body>
