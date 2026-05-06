@@ -198,7 +198,7 @@
                 </div>
             </div>
 
-            <!-- NOVA ABA DE LOGS/AUDITORIA -->
+            <!-- ABA DE LOGS/AUDITORIA -->
             <div id="aba-Logs" class="hidden flex flex-col gap-6">
                 <div class="bg-gray-900 p-4 rounded-xl border border-yellow-800 shadow-lg">
                     <h2 class="text-lg font-bold text-yellow-500 mb-2 text-center">📜 Histórico de Ações (Auditoria)</h2>
@@ -247,15 +247,9 @@
         let telaoAtivoId = null;
         let qrCodeGerado = null;
 
-        // ================= FUNÇÃO DE AUDITORIA (NOVA) =================
         function registrarLog(acao, detalhes) {
             const adminEmail = auth.currentUser ? auth.currentUser.email : 'Sistema';
-            db.collection('admin_logs').add({
-                acao: acao,
-                detalhes: detalhes,
-                admin: adminEmail,
-                data: new Date().getTime()
-            });
+            db.collection('admin_logs').add({ acao: acao, detalhes: detalhes, admin: adminEmail, data: new Date().getTime() });
         }
 
         function formatarDataHora(dataStringOrMs) {
@@ -300,7 +294,6 @@
         }
 
         function iniciarPainelAdmin() {
-            // FINANCEIRO
             function atualizarBalanco() {
                 let ent = 0, sai = 0;
                 db.collection('depositos').where('status', '==', 'aprovado').onSnapshot(snap => {
@@ -344,7 +337,6 @@
                 });
             });
 
-            // USUÁRIOS
             db.collection('usuarios').onSnapshot(snap => {
                 const s = document.getElementById('select-usuario'), t = document.getElementById('tabela-usuarios');
                 s.innerHTML = '<option value="">Escolher...</option>'; t.innerHTML = '';
@@ -356,18 +348,16 @@
                 });
             });
 
-            // LOGS AUDITORIA (NOVO)
             db.collection('admin_logs').orderBy('data', 'desc').limit(50).onSnapshot(snap => {
                 const t = document.getElementById('tabela-logs');
                 t.innerHTML = '';
                 snap.forEach(doc => {
                     const l = doc.data();
-                    const adminCurto = l.admin.split('@')[0]; // Mostra só antes do @
+                    const adminCurto = l.admin.split('@')[0]; 
                     t.innerHTML += `<tr class="border-b border-gray-800 hover:bg-gray-800 transition"><td class="py-2">${formatarDataHora(l.data)}</td><td class="py-2 text-blue-400">${adminCurto}</td><td class="py-2"><span class="font-bold text-yellow-400">${l.acao}</span><br><span class="text-[8px] text-gray-400">${l.detalhes}</span></td></tr>`;
                 });
             });
 
-            // PARTIDAS RASCUNHO
             db.collection('partidas').where('status', '==', 'preparacao').onSnapshot(snap => {
                 const l = document.getElementById('lista-preparacao'); l.innerHTML = '';
                 let rascunhos = [];
@@ -439,7 +429,6 @@
                 partidasEmAberto.forEach(p => {
                     const oddAtual = simularOdd(p.poolA, p.poolB);
 
-                    // =================== ATUALIZAÇÃO DO TELÃO AO VIVO ===================
                     if (telaoAtivoId === p.id) {
                         document.getElementById('telao-jogA').innerText = p.jogA;
                         document.getElementById('telao-jogB').innerText = p.jogB;
@@ -456,10 +445,26 @@
                         
                         let btnTelao = p.status === 'aberta' ? `<button onclick="abrirTelao('${p.id}', '${p.jogA}', '${p.jogB}', '${oddAtual.oA}', '${oddAtual.oB}')" class="w-full bg-blue-700 hover:bg-blue-600 py-2 rounded text-[10px] font-black uppercase text-white transition mb-3 shadow border border-blue-500">📺 Modo Telão</button>` : '';
 
+                        // NOVO: AJUSTE DE MERCADO AO VIVO
+                        let ajusteAoVivo = p.status === 'aberta' ? `
+                            <div class="bg-gray-800 p-2 rounded mb-3 border border-gray-600 flex justify-between gap-2 items-end shadow-inner">
+                                <div class="flex-1 text-left">
+                                    <label class="text-[9px] text-gray-400 block mb-1 uppercase tracking-wider">Vol. Esperado</label>
+                                    <input type="number" id="live-vol-${p.id}" value="${p.volEsperado || 0}" class="w-full p-1 bg-gray-900 rounded text-xs text-white border border-gray-700 text-center focus:border-blue-500 outline-none">
+                                </div>
+                                <div class="flex-1 text-left">
+                                    <label class="text-[9px] text-yellow-500 block mb-1 uppercase tracking-wider">Risco (Liab)</label>
+                                    <input type="number" id="live-risco-${p.id}" value="${p.risco || 0}" class="w-full p-1 bg-gray-900 rounded text-xs text-yellow-400 border border-yellow-800 text-center focus:border-yellow-500 outline-none">
+                                </div>
+                                <button onclick="salvarAjusteAoVivo('${p.id}', ${p.probA || 50}, '${p.jogA} x ${p.jogB}')" id="btn-live-${p.id}" class="bg-blue-600 hover:bg-blue-500 text-white font-bold rounded px-3 py-1 text-[10px] h-[26px] transition">SALVAR</button>
+                            </div>
+                        ` : '';
+
                         lEncerrar.innerHTML += `
                             <div class="bg-gray-900 p-3 rounded-xl border border-gray-700 mb-2 text-center shadow-lg">
                                 <p class="text-sm font-bold mb-1">${p.jogA} x ${p.jogB}</p>
                                 ${dataInputAberta}
+                                ${ajusteAoVivo}
                                 ${btnTelao}
                                 ${btnBloqueio}
                                 <div class="flex gap-2 mb-2">
@@ -508,6 +513,37 @@
             });
         }
 
+        // ================= FUNÇÃO: AJUSTE AO VIVO =================
+        function salvarAjusteAoVivo(id, probA, nomeJogo) {
+            const novoVol = parseInt(document.getElementById(`live-vol-${id}`).value) || 0;
+            const novoRisco = parseInt(document.getElementById(`live-risco-${id}`).value) || 0;
+            
+            let probB = 100 - probA;
+            let phantomTotal = novoVol * 0.2;
+            
+            // Recalcula as Pools Fantasmas para estabilizar o mercado
+            let pA = Math.max(1, Math.floor(phantomTotal * (probA / 100)));
+            let pB = Math.max(1, Math.floor(phantomTotal * (probB / 100)));
+
+            db.collection('partidas').doc(id).update({
+                volEsperado: novoVol,
+                risco: novoRisco,
+                poolA: pA,
+                poolB: pB
+            }).then(() => {
+                const btn = document.getElementById(`btn-live-${id}`);
+                if(btn) { 
+                    btn.innerText = "✓"; 
+                    btn.classList.replace('bg-blue-600', 'bg-green-600');
+                    setTimeout(() => { 
+                        btn.innerText = "SALVAR"; 
+                        btn.classList.replace('bg-green-600', 'bg-blue-600'); 
+                    }, 1500); 
+                }
+                registrarLog("AJUSTE AO VIVO", `Injetou liquidez em ${nomeJogo} (Vol: ${novoVol}, Risco: ${novoRisco})`);
+            }).catch(err => alert("Erro ao atualizar: " + err.message));
+        }
+
         // ================= FUNÇÕES DO TELÃO (LÓGICA) =================
         function abrirTelao(id, jogA, jogB, oddA, oddB) {
             telaoAtivoId = id;
@@ -515,15 +551,11 @@
             document.getElementById('telao-jogB').innerText = jogB;
             document.getElementById('telao-oddA').innerText = oddA;
             document.getElementById('telao-oddB').innerText = oddB;
-            
             document.getElementById('telao-url-display').innerText = URL_DO_SEU_SITE;
             
             document.getElementById('qrcode-container').innerHTML = '';
             qrCodeGerado = new QRCode(document.getElementById("qrcode-container"), {
-                text: URL_DO_SEU_SITE,
-                width: 150, height: 150,
-                colorDark : "#000000", colorLight : "#ffffff",
-                correctLevel : QRCode.CorrectLevel.H
+                text: URL_DO_SEU_SITE, width: 150, height: 150, colorDark : "#000000", colorLight : "#ffffff", correctLevel : QRCode.CorrectLevel.H
             });
 
             document.getElementById('tela-telao').classList.remove('hidden');
@@ -540,9 +572,7 @@
             db.collection('partidas').doc(id).update({ dataJogo: novaData || null });
         }
 
-        function fecharModalApostas() {
-            document.getElementById('modal-apostas').classList.add('hidden');
-        }
+        function fecharModalApostas() { document.getElementById('modal-apostas').classList.add('hidden'); }
 
         async function verApostas(partidaId, jogA, jogB) {
             document.getElementById('titulo-modal-apostas').innerText = `🧾 Apostas: ${jogA} x ${jogB}`;
@@ -551,7 +581,6 @@
             document.getElementById('modal-apostas').classList.remove('hidden');
 
             try {
-                // Ao buscar as apostas, salva e exibe em tempo real
                 db.collection('apostas').where('partidaId', '==', partidaId).onSnapshot(snap => {
                     tb.innerHTML = '';
                     if(snap.empty) return tb.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-gray-500">Ninguém apostou nesta partida ainda.</td></tr>';
@@ -562,15 +591,11 @@
 
                     apostas.forEach(a => {
                         const nomeUser = mapaUsuarios[a.uid] || 'Desconhecido';
-                        
-                        // Lógica visual de status (quando finaliza)
                         let statusHtml = '<span class="text-gray-400">Ao Vivo</span>';
                         if(a.resultado === 'ganhou') statusHtml = `<span class="text-green-400 font-bold">+${a.premio}</span>`;
                         else if(a.resultado === 'perdeu') statusHtml = `<span class="text-red-400">Perdeu</span>`;
                         else if(a.resultado === 'anulada') statusHtml = `<span class="text-red-500 font-bold">Estornada</span>`;
 
-                        // NOVO: BOTÃO DE DELETAR APOSTA
-                        // Só permite deletar se a partida ainda estiver rodando ('pendente')
                         let btnExcluir = a.resultado === 'pendente' 
                             ? `<button onclick="excluirApostaEspecifica('${a.id}', '${partidaId}', '${a.escolha}', ${a.valor}, '${nomeUser}')" class="bg-gray-700 hover:bg-red-700 px-2 py-1 rounded text-white text-[10px] transition border border-gray-600">🗑️</button>` 
                             : `<span class="text-gray-600">-</span>`;
@@ -588,32 +613,20 @@
             } catch(e) { tb.innerHTML = `<tr><td colspan="5" class="text-center py-4 text-red-500">Erro: ${e.message}</td></tr>`; }
         }
 
-        // ================= FUNÇÃO DE EXCLUIR APOSTA DO HACKER (NOVA) =================
         async function excluirApostaEspecifica(apostaId, partidaId, escolha, valor, nomeUser) {
             if(!confirm(`⚠️ DELETAR APOSTA DE ${valor} FICHAS?\nIsso vai remover a aposta e restaurar o volume da partida.\nConfirma?`)) return;
-
             const batch = db.batch();
-            
-            // 1. Apaga a aposta
             batch.delete(db.collection('apostas').doc(apostaId));
-            
-            // 2. Tira o volume falso da partida para consertar a Odd
             const desc = { poolA: 0, poolB: 0, realA: 0, realB: 0 };
-            if (escolha === 'A') {
-                desc.poolA = -valor; desc.realA = -valor;
-            } else {
-                desc.poolB = -valor; desc.realB = -valor;
-            }
+            if (escolha === 'A') { desc.poolA = -valor; desc.realA = -valor; } 
+            else { desc.poolB = -valor; desc.realB = -valor; }
             
             batch.update(db.collection('partidas').doc(partidaId), {
-                poolA: firebase.firestore.FieldValue.increment(desc.poolA),
-                poolB: firebase.firestore.FieldValue.increment(desc.poolB),
-                realA: firebase.firestore.FieldValue.increment(desc.realA),
-                realB: firebase.firestore.FieldValue.increment(desc.realB)
+                poolA: firebase.firestore.FieldValue.increment(desc.poolA), poolB: firebase.firestore.FieldValue.increment(desc.poolB),
+                realA: firebase.firestore.FieldValue.increment(desc.realA), realB: firebase.firestore.FieldValue.increment(desc.realB)
             });
-
             await batch.commit();
-            registrarLog("APOSTA CANCELADA/DELETADA", `Removeu aposta de ${valor}F feita por ${nomeUser}`);
+            registrarLog("APOSTA CANCELADA", `Removeu aposta de ${valor}F feita por ${nomeUser}`);
             alert("Aposta removida e mercado reajustado.");
         }
 
@@ -631,10 +644,7 @@
             const asSnap = await db.collection('apostas').where('partidaId', '==', id).get();
             asSnap.forEach(doc => {
                 const a = doc.data();
-                batch.update(db.collection('usuarios').doc(a.uid), {
-                    saldo: firebase.firestore.FieldValue.increment(a.valor),
-                    totalApostado: firebase.firestore.FieldValue.increment(-a.valor)
-                });
+                batch.update(db.collection('usuarios').doc(a.uid), { saldo: firebase.firestore.FieldValue.increment(a.valor), totalApostado: firebase.firestore.FieldValue.increment(-a.valor) });
                 batch.update(doc.ref, { resultado: 'anulada' });
             });
             batch.update(db.collection('partidas').doc(id), { status: 'anulada', lucroCasa: 0 });
@@ -645,8 +655,7 @@
 
         async function deletarRascunho(id, jogA, jogB) {
             if(confirm(`Deseja apagar o rascunho de ${jogA} vs ${jogB}?`)){
-                await db.collection('partidas').doc(id).delete();
-                registrarLog("RASCUNHO EXCLUÍDO", `Deletou rascunho de ${jogA} x ${jogB}`);
+                await db.collection('partidas').doc(id).delete(); registrarLog("RASCUNHO EXCLUÍDO", `Deletou rascunho de ${jogA} x ${jogB}`);
             } 
         }
 
@@ -657,8 +666,7 @@
         }
         function marcarSaquePago(id, nomeUser, reais) { 
             if(confirm('PIX enviado para o jogador?')) {
-                db.collection('saques').doc(id).update({ status: 'pago' }); 
-                registrarLog("SAQUE PAGO", `Confirmou PIX de R$${reais} para ${nomeUser}`);
+                db.collection('saques').doc(id).update({ status: 'pago' }); registrarLog("SAQUE PAGO", `Confirmou PIX de R$${reais} para ${nomeUser}`);
             }
         }
         function recusarSaque(docId, uid, fichas, nomeUser) {
@@ -669,23 +677,15 @@
             }
         }
         function adicionarFichas() {
-            const combo = document.getElementById('select-usuario');
-            const uid = combo.value;
-            const nomeUser = combo.options[combo.selectedIndex].text;
-            const v = parseInt(document.getElementById('valor-fichas').value);
+            const combo = document.getElementById('select-usuario'); const uid = combo.value; const nomeUser = combo.options[combo.selectedIndex].text; const v = parseInt(document.getElementById('valor-fichas').value);
             if(uid && v) {
                 db.collection('usuarios').doc(uid).update({ saldo: firebase.firestore.FieldValue.increment(v) });
-                registrarLog("EDIÇÃO DE SALDO MANUAL", `Adicionou/Removeu ${v}F na conta de ${nomeUser}`);
-                document.getElementById('valor-fichas').value = '';
+                registrarLog("EDIÇÃO DE SALDO MANUAL", `Adicionou/Removeu ${v}F na conta de ${nomeUser}`); document.getElementById('valor-fichas').value = '';
             }
         }
         async function excluirConta(uid, nome) { 
             const resp = prompt(`⚠️ ATENÇÃO!\nExcluir a conta de ${nome}?\nDigite APAGAR para confirmar:`);
-            if (resp === 'APAGAR') { 
-                await db.collection('usuarios').doc(uid).delete(); 
-                registrarLog("CONTA EXCLUÍDA", `Deletou o usuário ${nome}`);
-                alert('Conta excluída.'); 
-            }
+            if (resp === 'APAGAR') { await db.collection('usuarios').doc(uid).delete(); registrarLog("CONTA EXCLUÍDA", `Deletou o usuário ${nome}`); alert('Conta excluída.'); }
         }
 
         function simularOdd(pA, pB) {
@@ -694,10 +694,7 @@
         }
         
         function criarPartida() {
-            const f = document.getElementById('fase-partida').value;
-            const a = document.getElementById('jogA').value.trim();
-            const b = document.getElementById('jogB').value.trim();
-            const dataP = document.getElementById('data-partida').value;
+            const f = document.getElementById('fase-partida').value, a = document.getElementById('jogA').value.trim(), b = document.getElementById('jogB').value.trim(), dataP = document.getElementById('data-partida').value;
             if(!a || !b) return alert("Digite os nomes dos jogadores.");
             db.collection('partidas').add({ fase: f, jogA: a, jogB: b, dataJogo: dataP || null, poolA: 100, poolB: 100, risco: 500, realA: 0, realB: 0, status: 'preparacao', probA: 50 });
             registrarLog("PARTIDA CRIADA", `Novo rascunho: ${a} x ${b}`);
@@ -705,145 +702,69 @@
         }
         
         function calcMkt(id, origem) {
-            const elTotal = document.getElementById(`volTotal-${id}`);
-            const elProbA = document.getElementById(`probA-${id}`);
-            const elProbB = document.getElementById(`probB-${id}`);
-            const elA = document.getElementById(`volA-${id}`);
-            const elB = document.getElementById(`volB-${id}`);
-            const elRisco = document.getElementById(`risco-${id}`);
+            const elTotal = document.getElementById(`volTotal-${id}`), elProbA = document.getElementById(`probA-${id}`), elProbB = document.getElementById(`probB-${id}`), elA = document.getElementById(`volA-${id}`), elB = document.getElementById(`volB-${id}`), elRisco = document.getElementById(`risco-${id}`);
+            let valTotal = parseFloat(elTotal.value) || 0, probA = parseFloat(elProbA.value) || 50;
+            if(probA > 99) probA = 99; if(probA < 1) probA = 1;
+            let probB = 100 - probA; elProbB.value = probB.toFixed(1); 
+            let phantomTotal = valTotal * 0.2, pA = Math.max(1, Math.floor(phantomTotal * (probA / 100))), pB = Math.max(1, Math.floor(phantomTotal * (probB / 100)));
+            let odds = simularOdd(pA, pB), oddA_num = parseFloat(odds.oA), oddB_num = parseFloat(odds.oB);
+            let valA = parseFloat(elA.value) || 0, valB = parseFloat(elB.value) || 0, risco = parseFloat(elRisco.value) || 0;
             
-            let valTotal = parseFloat(elTotal.value) || 0;
-            let probA = parseFloat(elProbA.value) || 50;
-            if(probA > 99) probA = 99;
-            if(probA < 1) probA = 1;
-            let probB = 100 - probA;
-            elProbB.value = probB.toFixed(1); 
+            if (origem === 'total' || origem === 'prob') { risco = valTotal * RISK_MARGIN; valA = risco / (oddA_num - 1); valB = risco / (oddB_num - 1);
+            } else if (origem === 'A') { risco = valA * (oddA_num - 1); valTotal = risco / RISK_MARGIN; valB = risco / (oddB_num - 1);
+            } else if (origem === 'B') { risco = valB * (oddB_num - 1); valTotal = risco / RISK_MARGIN; valA = risco / (oddA_num - 1);
+            } else if (origem === 'risco') { valTotal = risco / RISK_MARGIN; valA = risco / (oddA_num - 1); valB = risco / (oddB_num - 1); }
 
-            let phantomTotal = valTotal * 0.2;
-            let pA = Math.max(1, Math.floor(phantomTotal * (probA / 100)));
-            let pB = Math.max(1, Math.floor(phantomTotal * (probB / 100)));
-            let odds = simularOdd(pA, pB);
-            let oddA_num = parseFloat(odds.oA);
-            let oddB_num = parseFloat(odds.oB);
-
-            let valA = parseFloat(elA.value) || 0;
-            let valB = parseFloat(elB.value) || 0;
-            let risco = parseFloat(elRisco.value) || 0;
-            
-            if (origem === 'total' || origem === 'prob') {
-                risco = valTotal * RISK_MARGIN;
-                valA = risco / (oddA_num - 1);
-                valB = risco / (oddB_num - 1);
-            } else if (origem === 'A') {
-                risco = valA * (oddA_num - 1);
-                valTotal = risco / RISK_MARGIN;
-                valB = risco / (oddB_num - 1);
-            } else if (origem === 'B') {
-                risco = valB * (oddB_num - 1);
-                valTotal = risco / RISK_MARGIN;
-                valA = risco / (oddA_num - 1);
-            } else if (origem === 'risco') {
-                valTotal = risco / RISK_MARGIN;
-                valA = risco / (oddA_num - 1);
-                valB = risco / (oddB_num - 1);
-            }
-
-            if (!isFinite(valA) || valA < 0) valA = 0;
-            if (!isFinite(valB) || valB < 0) valB = 0;
-
-            elTotal.value = Math.floor(valTotal);
-            elA.value = Math.floor(valA);
-            elB.value = Math.floor(valB);
-            elRisco.value = Math.floor(risco);
-            document.getElementById(`oddA-${id}`).innerText = odds.oA;
-            document.getElementById(`oddB-${id}`).innerText = odds.oB;
-            document.getElementById(`pA-${id}`).value = pA;
-            document.getElementById(`pB-${id}`).value = pB;
+            if (!isFinite(valA) || valA < 0) valA = 0; if (!isFinite(valB) || valB < 0) valB = 0;
+            elTotal.value = Math.floor(valTotal); elA.value = Math.floor(valA); elB.value = Math.floor(valB); elRisco.value = Math.floor(risco);
+            document.getElementById(`oddA-${id}`).innerText = odds.oA; document.getElementById(`oddB-${id}`).innerText = odds.oB; document.getElementById(`pA-${id}`).value = pA; document.getElementById(`pB-${id}`).value = pB;
         }
 
         function salvarPesos(id) { 
-            const volInp = parseInt(document.getElementById(`volTotal-${id}`).value) || 0;
-            const vA = parseInt(document.getElementById(`volA-${id}`).value) || 0;
-            const vB = parseInt(document.getElementById(`volB-${id}`).value) || 0;
-            const probA = parseInt(document.getElementById(`probA-${id}`).value) || 50;
-            const riscoCalc = parseInt(document.getElementById(`risco-${id}`).value) || 0;
-            const dataJogoInp = document.getElementById(`data-${id}`) ? document.getElementById(`data-${id}`).value : null;
-            
-            db.collection('partidas').doc(id).update({ 
-                poolA: parseInt(document.getElementById(`pA-${id}`).value) || 1, 
-                poolB: parseInt(document.getElementById(`pB-${id}`).value) || 1, 
-                risco: riscoCalc, volEsperado: volInp, volA: vA, volB: vB, probA: probA, dataJogo: dataJogoInp || null
-            }).then(() => {
-                const btn = document.getElementById(`btn-salvar-${id}`);
-                if(btn) { 
-                    btn.innerText = "✓ Salvo!"; btn.classList.replace('bg-gray-700', 'bg-green-700');
-                    setTimeout(() => { btn.innerText = "Salvar Edições"; btn.classList.replace('bg-green-700', 'bg-gray-700'); }, 1500); 
-                }
-            });
+            const volInp = parseInt(document.getElementById(`volTotal-${id}`).value) || 0, vA = parseInt(document.getElementById(`volA-${id}`).value) || 0, vB = parseInt(document.getElementById(`volB-${id}`).value) || 0, probA = parseInt(document.getElementById(`probA-${id}`).value) || 50, riscoCalc = parseInt(document.getElementById(`risco-${id}`).value) || 0, dataJogoInp = document.getElementById(`data-${id}`) ? document.getElementById(`data-${id}`).value : null;
+            db.collection('partidas').doc(id).update({ poolA: parseInt(document.getElementById(`pA-${id}`).value) || 1, poolB: parseInt(document.getElementById(`pB-${id}`).value) || 1, risco: riscoCalc, volEsperado: volInp, volA: vA, volB: vB, probA: probA, dataJogo: dataJogoInp || null
+            }).then(() => { const btn = document.getElementById(`btn-salvar-${id}`); if(btn) { btn.innerText = "✓ Salvo!"; btn.classList.replace('bg-gray-700', 'bg-green-700'); setTimeout(() => { btn.innerText = "Salvar Edições"; btn.classList.replace('bg-green-700', 'bg-gray-700'); }, 1500); } });
         }
 
         async function abrirApostas(id, nomeJogo) { 
-            const doc = await db.collection('partidas').doc(id).get();
-            const p = doc.data();
-            const odds = simularOdd(p.poolA, p.poolB);
-            db.collection('partidas').doc(id).update({ status: 'aberta', oddInicialA: odds.oA, oddInicialB: odds.oB }); 
-            registrarLog("MERCADO ABERTO", `Abriu as apostas para: ${nomeJogo}`);
+            const doc = await db.collection('partidas').doc(id).get(), p = doc.data(), odds = simularOdd(p.poolA, p.poolB);
+            db.collection('partidas').doc(id).update({ status: 'aberta', oddInicialA: odds.oA, oddInicialB: odds.oB }); registrarLog("MERCADO ABERTO", `Abriu as apostas para: ${nomeJogo}`);
         }
 
         async function encerrarPartida(id, lado, nome) {
             if(!confirm(`Pagar vitória de ${nome}?`)) return;
             const batch = db.batch(); let ganhos = {}; let totalPagoAosVencedores = 0;
-            const pSnap = await db.collection('partidas').doc(id).get();
-            const pData = pSnap.data();
-            const volumeRecebidoReal = (pData.realA || 0) + (pData.realB || 0);
-
+            const pSnap = await db.collection('partidas').doc(id).get(), pData = pSnap.data(), volumeRecebidoReal = (pData.realA || 0) + (pData.realB || 0);
             const asSnap = await db.collection('apostas').where('partidaId', '==', id).get();
             asSnap.forEach(doc => {
                 const a = doc.data();
-                if(a.escolha === lado) {
-                    const pr = Math.floor(a.valor * parseFloat(a.oddTravada));
-                    ganhos[a.uid] = (ganhos[a.uid] || 0) + pr;
-                    totalPagoAosVencedores += pr;
-                    batch.update(doc.ref, { resultado: 'ganhou', premio: pr });
+                if(a.escolha === lado) { const pr = Math.floor(a.valor * parseFloat(a.oddTravada)); ganhos[a.uid] = (ganhos[a.uid] || 0) + pr; totalPagoAosVencedores += pr; batch.update(doc.ref, { resultado: 'ganhou', premio: pr });
                 } else { batch.update(doc.ref, { resultado: 'perdeu' }); }
             });
-
             for(let u in ganhos) batch.update(db.collection('usuarios').doc(u), { saldo: firebase.firestore.FieldValue.increment(ganhos[u]) });
             const lucroParaABanca = volumeRecebidoReal - totalPagoAosVencedores;
             batch.update(db.collection('partidas').doc(id), { status: 'finalizada', vencedor: lado, lucroCasa: lucroParaABanca });
-            await batch.commit();
-            registrarLog("PARTIDA ENCERRADA", `Vitória paga para ${nome} (${lado})`);
+            await batch.commit(); registrarLog("PARTIDA ENCERRADA", `Vitória paga para ${nome} (${lado})`);
         }
 
         async function apagarPartidasFinalizadas() { 
             const resp = prompt('⚠️ ATENÇÃO!\nIsso apagará a exibição de resultados.\n\nDigite APAGAR para confirmar:');
             if(resp !== 'APAGAR') return alert('Ação cancelada.');
-            const batch = db.batch();
-            const s1 = await db.collection('partidas').where('status', '==', 'finalizada').get(); s1.forEach(d => batch.delete(d.ref)); 
-            const s2 = await db.collection('partidas').where('status', '==', 'anulada').get(); s2.forEach(d => batch.delete(d.ref)); 
-            await batch.commit(); 
-            registrarLog("LIMPEZA", "Apagou visualização de partidas encerradas/anuladas");
-            alert('Partidas apagadas.');
+            const batch = db.batch(), s1 = await db.collection('partidas').where('status', '==', 'finalizada').get(); s1.forEach(d => batch.delete(d.ref)); const s2 = await db.collection('partidas').where('status', '==', 'anulada').get(); s2.forEach(d => batch.delete(d.ref)); 
+            await batch.commit(); registrarLog("LIMPEZA", "Apagou visualização de partidas encerradas/anuladas"); alert('Partidas apagadas.');
         }
 
         async function apagarHistoricoApostas() { 
             const resp = prompt('⚠️ PERIGO MÁXIMO!\nIsso apagará TODO o histórico de apostas.\n\nDigite APAGAR para confirmar:');
             if(resp !== 'APAGAR') return alert('Ação cancelada.');
-            const s = await db.collection('apostas').get(); 
-            const batch = db.batch(); s.forEach(d => batch.delete(d.ref)); await batch.commit(); 
-            registrarLog("LIMPEZA EXTREMA", "Limpou todo o banco de apostas");
-            alert('Histórico de apostas limpo.');
+            const s = await db.collection('apostas').get(), batch = db.batch(); s.forEach(d => batch.delete(d.ref)); await batch.commit(); registrarLog("LIMPEZA EXTREMA", "Limpou todo o banco de apostas"); alert('Histórico de apostas limpo.');
         }
 
         async function apagarLivroCaixa() {
             const resp = prompt('⚠️ ZERAR CAIXA?\n\nDigite ZERAR para confirmar:');
             if(resp !== 'ZERAR') return alert('Ação cancelada.');
-            const batch = db.batch();
-            const d = await db.collection('depositos').get(); d.forEach(doc => batch.delete(doc.ref));
-            const s = await db.collection('saques').get(); s.forEach(doc => batch.delete(doc.ref));
-            await batch.commit(); 
-            registrarLog("LIMPEZA EXTREMA", "Zerou livro-caixa (depósitos e saques)");
-            alert('Livro-caixa zerado.');
+            const batch = db.batch(), d = await db.collection('depositos').get(); d.forEach(doc => batch.delete(doc.ref)); const s = await db.collection('saques').get(); s.forEach(doc => batch.delete(doc.ref));
+            await batch.commit(); registrarLog("LIMPEZA EXTREMA", "Zerou livro-caixa (depósitos e saques)"); alert('Livro-caixa zerado.');
         }
     </script>
 </body>
