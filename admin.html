@@ -588,9 +588,61 @@
             if(uid && v) db.collection('usuarios').doc(uid).update({ saldo: firebase.firestore.FieldValue.increment(v) });
             document.getElementById('valor-fichas').value = '';
         }
-        async function excluirConta(uid, nome) { 
-            const resp = prompt(`⚠️ ATENÇÃO!\nExcluir a conta de ${nome}?\nDigite APAGAR para confirmar:`);
-            if (resp === 'APAGAR') { await db.collection('usuarios').doc(uid).delete(); alert('Conta excluída.'); }
+       async function excluirConta(uid, nome) { 
+            const resp = prompt(`⚠️ ATENÇÃO!\nExcluir a conta de ${nome} e DELETAR todas as apostas dele?\nIsso reajustará o mercado.\n\nDigite APAGAR para confirmar:`);
+            
+            if (resp === 'APAGAR') { 
+                try {
+                    // 1. Busca todas as apostas feitas por esse usuário
+                    const apostasSnap = await db.collection('apostas').where('uid', '==', uid).get();
+                    
+                    const batch = db.batch();
+                    let descontosPartidas = {};
+
+                    // 2. Prepara a exclusão e calcula quanto dinheiro falso remover de cada partida
+                    apostasSnap.forEach(doc => {
+                        const aposta = doc.data();
+                        
+                        // Cria o registro da partida se ainda não existir no nosso cálculo
+                        if (!descontosPartidas[aposta.partidaId]) {
+                            descontosPartidas[aposta.partidaId] = { poolA: 0, poolB: 0, realA: 0, realB: 0 };
+                        }
+                        
+                        // Desconta o valor do lado que o hacker apostou
+                        if (aposta.escolha === 'A') {
+                            descontosPartidas[aposta.partidaId].poolA -= aposta.valor;
+                            descontosPartidas[aposta.partidaId].realA -= aposta.valor;
+                        } else {
+                            descontosPartidas[aposta.partidaId].poolB -= aposta.valor;
+                            descontosPartidas[aposta.partidaId].realB -= aposta.valor;
+                        }
+                        
+                        // Manda deletar o recibo da aposta
+                        batch.delete(doc.ref);
+                    });
+
+                    // 3. Devolve os volumes subtraídos para as partidas (Restaura as Odds originais)
+                    for (let partidaId in descontosPartidas) {
+                        const desc = descontosPartidas[partidaId];
+                        batch.update(db.collection('partidas').doc(partidaId), {
+                            poolA: firebase.firestore.FieldValue.increment(desc.poolA),
+                            poolB: firebase.firestore.FieldValue.increment(desc.poolB),
+                            realA: firebase.firestore.FieldValue.increment(desc.realA),
+                            realB: firebase.firestore.FieldValue.increment(desc.realB)
+                        });
+                    }
+
+                    // 4. Manda deletar o próprio usuário
+                    batch.delete(db.collection('usuarios').doc(uid));
+
+                    // 5. Executa a varredura completa de uma só vez (Operação Atômica)
+                    await batch.commit(); 
+                    
+                    alert('✅ Exorcismo concluído!\nConta apagada, apostas excluídas e Odds restauradas.');
+                } catch(err) {
+                    alert('Erro ao excluir conta: ' + err.message);
+                }
+            }
         }
 
         function simularOdd(pA, pB) {
