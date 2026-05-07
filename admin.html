@@ -47,6 +47,7 @@
             <p id="telao-url-display" class="mt-2 md:mt-3 text-gray-400 font-mono text-[10px] md:text-sm"></p>
         </div>
     </div>
+
     <div id="modal-apostas" class="hidden fixed inset-0 bg-black bg-opacity-80 z-[100] flex items-center justify-center p-4">
         <div class="bg-gray-800 p-6 rounded-2xl border border-indigo-800 shadow-2xl w-full max-w-lg relative flex flex-col max-h-[80vh]">
             <button onclick="fecharModalApostas()" class="absolute top-3 right-4 text-gray-400 hover:text-white font-bold text-xl">&times;</button>
@@ -556,6 +557,7 @@
                         
                         let btnTelao = p.status === 'aberta' ? `<button onclick="abrirTelao('${p.id}', '${p.jogA}', '${p.jogB}', '${oddAtual.oA}', '${oddAtual.oB}')" class="w-full bg-blue-700 hover:bg-blue-600 py-2 rounded text-[10px] font-black uppercase text-white transition mb-3 shadow border border-blue-500">📺 Modo Telão</button>` : '';
                         
+                        // NOVO: Passando os valores REAIS para não quebrar a diluição
                         let ajusteAoVivo = p.status === 'aberta' ? `
                             <div class="bg-gray-800 p-2 rounded mb-3 border border-gray-600 flex justify-between gap-2 items-end shadow-inner">
                                 <div class="flex-1 text-left">
@@ -566,7 +568,7 @@
                                     <label class="text-[9px] text-yellow-500 block mb-1 uppercase tracking-wider">Risco (Liab)</label>
                                     <input type="number" id="live-risco-${p.id}" value="${p.risco || 0}" class="w-full p-1 bg-gray-900 rounded text-xs text-yellow-400 border border-yellow-800 text-center focus:border-yellow-500 outline-none">
                                 </div>
-                                <button onclick="salvarAjusteAoVivo('${p.id}', ${p.probA || 50}, '${p.jogA} x ${p.jogB}')" id="btn-live-${p.id}" class="bg-blue-600 hover:bg-blue-500 text-white font-bold rounded px-3 py-1 text-[10px] h-[26px] transition">SALVAR</button>
+                                <button onclick="salvarAjusteAoVivo('${p.id}', ${p.probA || 50}, '${p.jogA} x ${p.jogB}', ${p.realA || 0}, ${p.realB || 0})" id="btn-live-${p.id}" class="bg-blue-600 hover:bg-blue-500 text-white font-bold rounded px-3 py-1 text-[10px] h-[26px] transition">SALVAR</button>
                             </div>` : '';
 
                         lEncerrar.innerHTML += `
@@ -641,20 +643,25 @@
             }
         }
 
-        function salvarAjusteAoVivo(id, probA, nomeJogo) {
-            const novoVol = parseInt(document.getElementById(`live-vol-${id}`).value) || 0;
+        // NOVO: Ajuste Ao Vivo Blindado (Recalcula a diluição do fantasma)
+        function salvarAjusteAoVivo(id, probA, nomeJogo, realA, realB) {
+            const novoVol = parseInt(document.getElementById(`live-vol-${id}`).value) || 1; 
             const novoRisco = parseInt(document.getElementById(`live-risco-${id}`).value) || 0;
             
             let probB = 100 - probA;
-            let phantomTotal = novoVol * 0.2;
-            let pA = Math.max(1, Math.floor(phantomTotal * (probA / 100)));
-            let pB = Math.max(1, Math.floor(phantomTotal * (probB / 100)));
+            let volReal = realA + realB;
+            
+            // Recalcula o fator com base no que já rolou de jogo
+            let fator = Math.max(0, 1 - (volReal / novoVol));
+            
+            let phantomA = Math.max(1, Math.floor((novoVol * 0.2) * (probA / 100) * fator));
+            let phantomB = Math.max(1, Math.floor((novoVol * 0.2) * (probB / 100) * fator));
             
             db.collection('partidas').doc(id).update({ 
                 volEsperado: novoVol, 
                 risco: novoRisco, 
-                poolA: pA, 
-                poolB: pB 
+                poolA: realA + phantomA, 
+                poolB: realB + phantomB 
             }).then(() => {
                 const btn = document.getElementById(`btn-live-${id}`);
                 if(btn) { 
@@ -730,7 +737,6 @@
                         else if(a.resultado === 'perdeu') statusHtml = `<span class="text-red-400">Perdeu</span>`;
                         else if(a.resultado === 'anulada') statusHtml = `<span class="text-red-500 font-bold">Estornada</span>`;
 
-                        // Remove aspas do nome do usuário para o botão de deletar aposta funcionar
                         const nomeParaExcluir = nomeUser.replace(/['"]/g, "");
 
                         let btnExcluir = a.resultado === 'pendente' 
@@ -752,29 +758,46 @@
             }
         }
 
+        // NOVO: A Lixeira Blindada (Devolve a aposta e restaura o Fator corretamente)
         async function excluirApostaEspecifica(apostaId, partidaId, escolha, valor, nomeUser) {
             if(!confirm(`⚠️ DELETAR APOSTA DE ${valor} FICHAS?\nIsso vai remover a aposta e restaurar o volume da partida.\nConfirma?`)) return;
             
-            const batch = db.batch(); 
-            batch.delete(db.collection('apostas').doc(apostaId));
+            const partidaRef = db.collection('partidas').doc(partidaId);
             
-            const desc = { poolA: 0, poolB: 0, realA: 0, realB: 0 };
-            if (escolha === 'A') { 
-                desc.poolA = -valor; desc.realA = -valor; 
-            } else { 
-                desc.poolB = -valor; desc.realB = -valor; 
-            }
-            
-            batch.update(db.collection('partidas').doc(partidaId), { 
-                poolA: firebase.firestore.FieldValue.increment(desc.poolA), 
-                poolB: firebase.firestore.FieldValue.increment(desc.poolB), 
-                realA: firebase.firestore.FieldValue.increment(desc.realA), 
-                realB: firebase.firestore.FieldValue.increment(desc.realB) 
-            });
-            
-            await batch.commit(); 
-            registrarLog("APOSTA CANCELADA", `Removeu aposta de ${valor}F feita por ${nomeUser}`); 
-            alert("Aposta removida e mercado reajustado.");
+            db.runTransaction(async (transaction) => {
+                const pDoc = await transaction.get(partidaRef);
+                if (!pDoc.exists) throw new Error("Partida não encontrada.");
+                const p = pDoc.data();
+                
+                // Subtrai o valor real do lado que foi deletado
+                let novoRealA = (p.realA || 0) - (escolha === 'A' ? valor : 0);
+                let novoRealB = (p.realB || 0) - (escolha === 'B' ? valor : 0);
+                if (novoRealA < 0) novoRealA = 0;
+                if (novoRealB < 0) novoRealB = 0;
+
+                // Como o dinheiro real sumiu, o Fator Fantasma volta a crescer para segurar a Odd!
+                let volEsperado = p.volEsperado || 1;
+                let probA = p.probA || 50;
+                let probB = 100 - probA;
+                
+                let volRealNovo = novoRealA + novoRealB;
+                let fatorNovo = Math.max(0, 1 - (volRealNovo / volEsperado));
+
+                let novoPhantomA = Math.max(1, Math.floor((volEsperado * 0.2) * (probA / 100) * fatorNovo));
+                let novoPhantomB = Math.max(1, Math.floor((volEsperado * 0.2) * (probB / 100) * fatorNovo));
+
+                transaction.delete(db.collection('apostas').doc(apostaId));
+                
+                transaction.update(partidaRef, {
+                    realA: novoRealA,
+                    realB: novoRealB,
+                    poolA: novoRealA + novoPhantomA,
+                    poolB: novoRealB + novoPhantomB
+                });
+            }).then(() => {
+                registrarLog("APOSTA CANCELADA", `Removeu aposta de ${valor}F feita por ${nomeUser}`);
+                alert("Aposta removida e mercado reajustado.");
+            }).catch(err => alert("Erro ao deletar: " + err.message));
         }
 
         function bloquearApostas(id) { 
@@ -1008,7 +1031,7 @@
                 });
                 
                 for(let u in ganhos) {
-                    // SET com MERGE: Se a conta do cara não existir mais, o sistema não trava!
+                    // SET com MERGE para não quebrar se o usuário foi deletado
                     batch.set(db.collection('usuarios').doc(u), { 
                         saldo: firebase.firestore.FieldValue.increment(ganhos[u]) 
                     }, { merge: true });
@@ -1028,21 +1051,6 @@
             } catch (erro) {
                 alert("❌ ERRO AO PAGAR O JOGO:\n" + erro.message);
             }
-        }
-            
-            for(let u in ganhos) {
-                batch.update(db.collection('usuarios').doc(u), { saldo: firebase.firestore.FieldValue.increment(ganhos[u]) });
-            }
-            
-            const lucroParaABanca = volumeRecebidoReal - totalPagoAosVencedores;
-            batch.update(db.collection('partidas').doc(id), { 
-                status: 'finalizada', 
-                vencedor: lado, 
-                lucroCasa: lucroParaABanca 
-            });
-            
-            await batch.commit(); 
-            registrarLog("PARTIDA ENCERRADA", `Vitória paga para ${nome} (${lado})`); 
         }
 
         async function apagarPartidasFinalizadas() { 
