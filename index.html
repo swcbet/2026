@@ -78,6 +78,7 @@
     <style>.hide-scroll::-webkit-scrollbar { display: none; } .hide-scroll { -ms-overflow-style: none; scrollbar-width: none; }</style>
 
     <script>
+        // CONFIGURAÇÃO FIREBASE
         const firebaseConfig = {
             apiKey: "AIzaSyC2GLJVb-sNki-yG-GcJib2EZlp4lWPynQ", authDomain: "swc-bet.firebaseapp.com",
             projectId: "swc-bet", storageBucket: "swc-bet.firebasestorage.app",
@@ -87,10 +88,12 @@
         const auth = firebase.auth();
         const db = firebase.firestore();
 
+        // MARGEM DA BANCA
         const OVERROUND = 1.15; 
         
         let faseAtual = 'Oitavas', dadosUsuario = null, unsubscribePartidas = null, unsubscribeHistorico = null;
 
+        // ================= UTILIDADES =================
         function formatarDataHora(dataString) {
             if (!dataString) return '';
             const data = new Date(dataString);
@@ -101,11 +104,10 @@
             return `${dia}/${mes} às ${hora}:${min}`;
         }
 
+        // ================= FUNÇÕES FINANCEIRAS =================
         function mostrarPix() { document.getElementById('modal-pix').classList.remove('hidden'); }
         function fecharPix() { document.getElementById('modal-pix').classList.add('hidden'); }
-        function copiarPix() {
-            navigator.clipboard.writeText("245561f2-8127-47b3-96cb-c819b94fd4e5").then(() => alert("Chave PIX copiada!"));
-        }
+        function copiarPix() { navigator.clipboard.writeText("245561f2-8127-47b3-96cb-c819b94fd4e5").then(() => alert("Chave PIX copiada!")); }
 
         function calcularFichasDeposito() {
             let reais = parseFloat(document.getElementById('valor-deposito-reais').value) || 0;
@@ -119,8 +121,12 @@
             let fichas = reais * 100;
             
             db.collection('depositos').add({
-                uid: auth.currentUser.uid, nome: dadosUsuario.nome,
-                reais: reais, fichas: fichas, status: 'pendente', data: new Date().getTime()
+                uid: auth.currentUser.uid, 
+                nome: dadosUsuario.nome,
+                reais: reais, 
+                fichas: fichas, 
+                status: 'pendente', 
+                data: new Date().getTime()
             }).then(() => {
                 alert("✅ Pedido enviado! O sistema vai liberar suas fichas assim que a banca confirmar o PIX.");
                 fecharPix();
@@ -128,43 +134,6 @@
                 document.getElementById('fichas-a-receber').innerText = '0';
             }).catch(e => alert("Erro: " + e));
         }
-
-        function criarConta() {
-            const nome = document.getElementById('nome').value.trim(), email = document.getElementById('email').value.trim(), senha = document.getElementById('senha').value.trim();
-            if (!nome || !email || !senha) return alert("Preencha todos os campos.");
-            auth.createUserWithEmailAndPassword(email, senha).then((cred) => {
-                db.collection('usuarios').doc(cred.user.uid).set({ nome: nome, saldo: 0, totalApostado: 0 }).then(() => alert("Conta criada!"));
-            }).catch(err => alert("Erro: " + err.message));
-        }
-
-        function fazerLogin() {
-            const email = document.getElementById('email').value.trim(), senha = document.getElementById('senha').value.trim();
-            if (!email || !senha) return alert("Preencha tudo.");
-            auth.signInWithEmailAndPassword(email, senha).catch(err => alert("Erro ao entrar."));
-        }
-
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById('tela-login').classList.add('hidden');
-                document.getElementById('tela-principal').classList.remove('hidden');
-                
-                db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
-                    if (doc.exists) {
-                        dadosUsuario = doc.data();
-                        document.getElementById('nome-user').innerText = dadosUsuario.nome;
-                        document.getElementById('saldo-user').innerText = dadosUsuario.saldo;
-                    } else {
-                        const nomeNovo = prompt("⚠️ O sistema detectou que a sua conta passou por um reset.\n\nDigite seu Nome novamente para recriar o seu perfil:") || "Usuário Readmitido";
-                        db.collection('usuarios').doc(user.uid).set({ 
-                            nome: nomeNovo, 
-                            saldo: 0, 
-                            totalApostado: 0 
-                        });
-                    }
-                });
-                mudarFase('Grupos');
-            }
-        });
 
         function pedirSaque() {
             const volume = dadosUsuario.totalApostado || 0;
@@ -195,31 +164,92 @@
             });
         }
 
-        // ================= A EQUAÇÃO DOURADA DE LIABILITY (Sincronizada com o Admin) =================
-        function calcularDados(p) {
-            let volumeA = p.poolA || 1, volumeB = p.poolB || 1, total = volumeA + volumeB;
-            let riscoAtual = p.risco || 500;
+        // ================= AUTENTICAÇÃO =================
+        function criarConta() {
+            const nome = document.getElementById('nome').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const senha = document.getElementById('senha').value.trim();
+            if (!nome || !email || !senha) return alert("Preencha todos os campos.");
             
+            auth.createUserWithEmailAndPassword(email, senha).then((cred) => {
+                db.collection('usuarios').doc(cred.user.uid).set({ 
+                    nome: nome, 
+                    saldo: 0, 
+                    totalApostado: 0 
+                }).then(() => alert("Conta criada!"));
+            }).catch(err => alert("Erro: " + err.message));
+        }
+
+        function fazerLogin() {
+            const email = document.getElementById('email').value.trim();
+            const senha = document.getElementById('senha').value.trim();
+            if (!email || !senha) return alert("Preencha tudo.");
+            auth.signInWithEmailAndPassword(email, senha).catch(err => alert("Erro ao entrar."));
+        }
+
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('tela-login').classList.add('hidden');
+                document.getElementById('tela-principal').classList.remove('hidden');
+                
+                db.collection('usuarios').doc(user.uid).onSnapshot(doc => {
+                    if (doc.exists) {
+                        dadosUsuario = doc.data();
+                        document.getElementById('nome-user').innerText = dadosUsuario.nome;
+                        document.getElementById('saldo-user').innerText = dadosUsuario.saldo;
+                    } else {
+                        const nomeNovo = prompt("⚠️ O sistema detectou que a sua conta passou por um reset.\n\nDigite seu Nome novamente para recriar o seu perfil:") || "Usuário Readmitido";
+                        db.collection('usuarios').doc(user.uid).set({ nome: nomeNovo, saldo: 0, totalApostado: 0 });
+                    }
+                });
+                mudarFase('Oitavas');
+            }
+        });
+
+        // ================= MOTOR AMM (FADING LIQUIDITY) =================
+        function calcularDados(p) {
+            let realA = p.realA || 0;
+            let realB = p.realB || 0;
+            let volEsperado = p.volEsperado || 1; 
+            let probA = p.probA || 50;
+            let probB = 100 - probA;
+            let riscoBase = p.risco || 0;
+
+            let volReal = realA + realB;
+            
+            // Fator de Diluição: Quanto mais perto do volume esperado, menor o dinheiro fantasma
+            let fator = Math.max(0, 1 - (volReal / volEsperado));
+
+            // Calcula o dinheiro fantasma atualizado
+            let phantomA = Math.max(1, Math.floor((volEsperado * 0.2) * (probA / 100) * fator));
+            let phantomB = Math.max(1, Math.floor((volEsperado * 0.2) * (probB / 100) * fator));
+
+            // Pools efetivas (Dinheiro Real + Dinheiro Fantasma Sobrevivente)
+            let poolA = realA + phantomA;
+            let poolB = realB + phantomB;
+            let totalPool = poolA + poolB;
+
             // Calculando as Odds Exatas
-            let oddA_str = Math.max(1.01, (total / (volumeA * OVERROUND))).toFixed(2);
-            let oddB_str = Math.max(1.01, (total / (volumeB * OVERROUND))).toFixed(2);
+            let oddA_str = Math.max(1.01, (totalPool / (poolA * OVERROUND))).toFixed(2);
+            let oddB_str = Math.max(1.01, (totalPool / (poolB * OVERROUND))).toFixed(2);
             
             let oddA_num = parseFloat(oddA_str);
             let oddB_num = parseFloat(oddB_str);
             
-            // O cálculo de limite baseia-se no quanto do risco ainda está disponível.
-            // Limite = (Risco_Max + Apostas_no_Adversario) / (Odd - 1) - Apostas_Já_Feitas_Nesse_Lado
-            let limA = Math.floor(((riscoAtual + (p.realB || 0)) / (oddA_num - 1)) - (p.realA || 0));
-            let limB = Math.floor(((riscoAtual + (p.realA || 0)) / (oddB_num - 1)) - (p.realB || 0));
+            // Risco Dinâmico: A casa assume menos risco à medida que o jogo enche
+            let riscoDinamico = Math.floor(riscoBase * fator);
 
-            // Proteções contra erros matemáticos se a Odd for 1.00
+            // Limite = (Risco Dinâmico + Dinheiro Real no Adversário) / (Odd - 1) - Dinheiro Real deste lado
+            let limA = Math.floor(((riscoDinamico + realB) / (oddA_num - 1)) - realA);
+            let limB = Math.floor(((riscoDinamico + realA) / (oddB_num - 1)) - realB);
+
             if (!isFinite(limA) || limA < 0) limA = 0;
             if (!isFinite(limB) || limB < 0) limB = 0;
 
             return { oddA: oddA_str, oddB: oddB_str, limA: limA, limB: limB };
         }
 
-        // ===================== RENDERIZAÇÃO DE PARTIDAS =====================
+        // ===================== RENDERIZAÇÃO =====================
         function mudarFase(f) {
             if(unsubscribeHistorico) unsubscribeHistorico();
             faseAtual = f; atualizarCoresMenu(f);
@@ -231,7 +261,6 @@
                 if (snapshot.empty) return container.innerHTML = '<p class="text-center text-gray-500 mt-10">Nenhuma partida programada.</p>';
                 let ativas = 0;
                 
-                // Ordenação para colocar os jogos com data mais próximos em cima
                 let partidasDoc = [];
                 snapshot.forEach(doc => partidasDoc.push({id: doc.id, ...doc.data()}));
                 partidasDoc.sort((a, b) => (a.dataJogo && b.dataJogo) ? new Date(a.dataJogo) - new Date(b.dataJogo) : -1);
@@ -250,12 +279,11 @@
                     } else if (p.status === 'anulada') {
                         statusVisual = `<div class="mt-4 p-2 bg-red-900/30 rounded text-center border border-red-800"><span class="text-xs text-red-500 font-bold uppercase">⚠️ Partida Anulada</span><br><span class="text-[10px] text-gray-400">Apostas foram estornadas</span></div>`;
                     } else if (p.status === 'bloqueada') {
-                        // NOVO: Renderiza a partida mas tranca os botões
                         statusVisual = `<div class="mt-4 p-3 bg-yellow-900/30 rounded text-center border border-yellow-800"><span class="text-xs text-yellow-500 font-black uppercase">🔒 Apostas Encerradas</span><br><span class="text-[10px] text-gray-400">A partida começou e o mercado foi fechado.</span></div>`;
                     } else {
                         statusVisual = `<div class="flex gap-3 mt-4">
-                            <button onclick="apostar('${id}', 'A')" class="flex-1 bg-gray-700 hover:bg-green-700 p-2 rounded-lg border border-gray-600 shadow-sm transition"><span class="block text-green-400 font-black text-xl">${c.oddA}</span><span class="text-[9px] text-gray-400">Lim: ${c.limA} F.</span></button>
-                            <button onclick="apostar('${id}', 'B')" class="flex-1 bg-gray-700 hover:bg-green-700 p-2 rounded-lg border border-gray-600 shadow-sm transition"><span class="block text-green-400 font-black text-xl">${c.oddB}</span><span class="text-[9px] text-gray-400">Lim: ${c.limB} F.</span></button>
+                            <button onclick="apostar('${id}', 'A', '${c.oddA}')" class="flex-1 bg-gray-700 hover:bg-green-700 p-2 rounded-lg border border-gray-600 shadow-sm transition"><span class="block text-green-400 font-black text-xl">${c.oddA}</span><span class="text-[9px] text-gray-400">Lim: ${c.limA} F.</span></button>
+                            <button onclick="apostar('${id}', 'B', '${c.oddB}')" class="flex-1 bg-gray-700 hover:bg-green-700 p-2 rounded-lg border border-gray-600 shadow-sm transition"><span class="block text-green-400 font-black text-xl">${c.oddB}</span><span class="text-[9px] text-gray-400">Lim: ${c.limB} F.</span></button>
                            </div>`;
                     }
                     
@@ -270,7 +298,6 @@
             });
         }
 
-        // ===================== HISTÓRICO =====================
         function mostrarHistorico() {
             if(unsubscribePartidas) unsubscribePartidas();
             atualizarCoresMenu('Historico');
@@ -304,33 +331,89 @@
             });
         }
 
-        async function apostar(id, escolha) {
-            const partidaRef = db.collection('partidas').doc(id), userRef = db.collection('usuarios').doc(auth.currentUser.uid);
-            const pDoc = await partidaRef.get(), p = pDoc.data();
-            
-            if (p.status === 'bloqueada') return alert("As apostas para esta partida já foram encerradas!");
-            
-            const c = calcularDados(p);
-            const lim = escolha === 'A' ? c.limA : c.limB, odd = escolha === 'A' ? c.oddA : c.oddB, nomeEsc = escolha === 'A' ? p.jogA : p.jogB;
-
-            let valor = parseInt(prompt(`Apostar em ${nomeEsc}\nOdd: ${odd}\nLim: ${lim} Fichas\n\nValor da aposta:`));
+        // ================= TRANSAÇÃO DE APOSTA BLINDADA =================
+        function apostar(id, escolha, oddVista) {
+            let valor = parseInt(prompt(`Odd: ${oddVista}\n\nQuantas fichas deseja apostar?`));
             if (!valor || valor <= 0) return;
-            if (valor > dadosUsuario.saldo) return alert("Você não tem saldo suficiente para esta aposta.");
-            if (valor > lim) return alert(`Aposta recusada pela banca. O limite máximo para esta cotação no momento é de ${lim} Fichas.`);
+            if (valor > dadosUsuario.saldo) return alert("❌ Saldo insuficiente!");
+
+            const partidaRef = db.collection('partidas').doc(id);
+            const userRef = db.collection('usuarios').doc(auth.currentUser.uid);
 
             db.runTransaction(async (transaction) => {
-                transaction.update(userRef, { saldo: dadosUsuario.saldo - valor, totalApostado: firebase.firestore.FieldValue.increment(valor) });
-                if (escolha === 'A') transaction.update(partidaRef, { poolA: p.poolA + valor, realA: (p.realA || 0) + valor });
-                else transaction.update(partidaRef, { poolB: p.poolB + valor, realB: (p.realB || 0) + valor });
+                const pDoc = await transaction.get(partidaRef);
+                if (!pDoc.exists) throw new Error("Partida não encontrada.");
+                
+                const p = pDoc.data();
+                if (p.status === 'bloqueada' || p.status === 'finalizada' || p.status === 'anulada') {
+                    throw new Error("As apostas para esta partida estão encerradas.");
+                }
+
+                // 1. Recalcula a matemática em tempo real dentro do servidor
+                const c = calcularDados(p);
+                const limReais = escolha === 'A' ? c.limA : c.limB;
+
+                if (valor > limReais) {
+                    throw new Error(`O limite máximo para esta odd no momento é de ${limReais} Fichas. \nO mercado está se protegendo, aguarde mais dinheiro entrar do outro lado.`);
+                }
+
+                // 2. Calcula o novo cenário com Fading Liquidity
+                let novoRealA = (p.realA || 0) + (escolha === 'A' ? valor : 0);
+                let novoRealB = (p.realB || 0) + (escolha === 'B' ? valor : 0);
+                
+                let volRealNovo = novoRealA + novoRealB;
+                let fatorNovo = Math.max(0, 1 - (volRealNovo / (p.volEsperado || 1)));
+
+                let probA = p.probA || 50;
+                let novoPhantomA = Math.max(1, Math.floor(((p.volEsperado || 0) * 0.2) * (probA / 100) * fatorNovo));
+                let novoPhantomB = Math.max(1, Math.floor(((p.volEsperado || 0) * 0.2) * ((100 - probA) / 100) * fatorNovo));
+
+                let novoPoolA = novoRealA + novoPhantomA;
+                let novoPoolB = novoRealB + novoPhantomB;
+
+                const oddFinal = escolha === 'A' ? c.oddA : c.oddB;
+                const nomeEsc = escolha === 'A' ? p.jogA : p.jogB;
+
+                // 3. Executa as atualizações blindadas (Corrigindo o erro de permissão)
+                transaction.update(userRef, { 
+                    saldo: dadosUsuario.saldo - valor, 
+                    totalApostado: firebase.firestore.FieldValue.increment(valor) 
+                });
+
+                transaction.update(partidaRef, { 
+                    realA: novoRealA,
+                    realB: novoRealB,
+                    poolA: novoPoolA, 
+                    poolB: novoPoolB 
+                });
+
+                // Cria o recibo da aposta
+                const novaApostaRef = db.collection('apostas').doc();
+                transaction.set(novaApostaRef, { 
+                    uid: auth.currentUser.uid, 
+                    partidaId: id, 
+                    jogA: p.jogA, 
+                    jogB: p.jogB, 
+                    escolha: escolha, 
+                    escolhaNome: nomeEsc, 
+                    valor: valor, 
+                    oddTravada: oddFinal, 
+                    resultado: 'pendente', 
+                    premio: 0, 
+                    data: new Date().getTime() 
+                });
+
             }).then(() => {
-                db.collection('apostas').add({ uid: auth.currentUser.uid, partidaId: id, jogA: p.jogA, jogB: p.jogB, escolha: escolha, escolhaNome: nomeEsc, valor: valor, oddTravada: odd, resultado: 'pendente', premio: 0, data: new Date().getTime() });
                 alert("✅ Aposta Registrada com Sucesso!");
-            }).catch(e => alert("Erro ao processar aposta: " + e));
+            }).catch(e => {
+                alert("⚠️ Aposta Cancelada: \n" + e.message);
+            });
         }
 
         function atualizarCoresMenu(ativo) {
             document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('bg-green-600', 'bg-blue-600'); btn.classList.add('bg-gray-700');
+                btn.classList.remove('bg-green-600', 'bg-blue-600'); 
+                btn.classList.add('bg-gray-700');
                 if(btn.innerText === ativo) btn.classList.replace('bg-gray-700', 'bg-green-600');
                 if(ativo === 'Historico' && btn.id === 'btn-historico') btn.classList.replace('bg-gray-700', 'bg-blue-600');
             });
