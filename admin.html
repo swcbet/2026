@@ -985,26 +985,50 @@
         async function encerrarPartida(id, lado, nome) {
             if(!confirm(`Pagar vitória de ${nome}?`)) return;
             
-            const batch = db.batch(); 
-            let ganhos = {}; 
-            let totalPagoAosVencedores = 0;
-            
-            const pSnap = await db.collection('partidas').doc(id).get();
-            const pData = pSnap.data();
-            const volumeRecebidoReal = (pData.realA || 0) + (pData.realB || 0);
-            
-            const asSnap = await db.collection('apostas').where('partidaId', '==', id).get();
-            asSnap.forEach(doc => {
-                const a = doc.data();
-                if(a.escolha === lado) { 
-                    const pr = Math.floor(a.valor * parseFloat(a.oddTravada)); 
-                    ganhos[a.uid] = (ganhos[a.uid] || 0) + pr; 
-                    totalPagoAosVencedores += pr; 
-                    batch.update(doc.ref, { resultado: 'ganhou', premio: pr });
-                } else { 
-                    batch.update(doc.ref, { resultado: 'perdeu' }); 
+            try {
+                const batch = db.batch(); 
+                let ganhos = {}; 
+                let totalPagoAosVencedores = 0;
+                
+                const pSnap = await db.collection('partidas').doc(id).get();
+                const pData = pSnap.data();
+                const volumeRecebidoReal = (pData.realA || 0) + (pData.realB || 0);
+                
+                const asSnap = await db.collection('apostas').where('partidaId', '==', id).get();
+                asSnap.forEach(doc => {
+                    const a = doc.data();
+                    if(a.escolha === lado) { 
+                        const pr = Math.floor(a.valor * parseFloat(a.oddTravada)); 
+                        ganhos[a.uid] = (ganhos[a.uid] || 0) + pr; 
+                        totalPagoAosVencedores += pr; 
+                        batch.update(doc.ref, { resultado: 'ganhou', premio: pr });
+                    } else { 
+                        batch.update(doc.ref, { resultado: 'perdeu' }); 
+                    }
+                });
+                
+                for(let u in ganhos) {
+                    // SET com MERGE: Se a conta do cara não existir mais, o sistema não trava!
+                    batch.set(db.collection('usuarios').doc(u), { 
+                        saldo: firebase.firestore.FieldValue.increment(ganhos[u]) 
+                    }, { merge: true });
                 }
-            });
+                
+                const lucroParaABanca = volumeRecebidoReal - totalPagoAosVencedores;
+                batch.update(db.collection('partidas').doc(id), { 
+                    status: 'finalizada', 
+                    vencedor: lado, 
+                    lucroCasa: lucroParaABanca 
+                });
+                
+                await batch.commit(); 
+                registrarLog("PARTIDA ENCERRADA", `Vitória paga para ${nome} (${lado})`); 
+                alert("✅ Partida encerrada e pagamentos realizados com sucesso!");
+                
+            } catch (erro) {
+                alert("❌ ERRO AO PAGAR O JOGO:\n" + erro.message);
+            }
+        }
             
             for(let u in ganhos) {
                 batch.update(db.collection('usuarios').doc(u), { saldo: firebase.firestore.FieldValue.increment(ganhos[u]) });
