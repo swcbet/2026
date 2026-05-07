@@ -313,7 +313,17 @@
                 const l = document.getElementById('lista-depositos'); l.innerHTML = '';
                 snap.forEach(doc => {
                     const d = doc.data();
-                    l.innerHTML += `<div class="bg-gray-900 p-3 rounded border border-gray-700 flex justify-between items-center mb-2"><div><p class="font-bold text-sm">${d.nome}</p><p class="text-green-400 text-xs font-bold">R$ ${d.reais} ➔ ${d.fichas} F</p></div><button onclick="aprovarDeposito('${doc.id}', '${d.uid}', ${d.fichas}, '${d.nome}', ${d.reais})" class="bg-green-600 px-4 py-1 rounded text-xs font-bold shadow hover:bg-green-500">Aprovar</button></div>`;
+                    l.innerHTML += `
+                        <div class="bg-gray-900 p-3 rounded border border-gray-700 flex justify-between items-center mb-2">
+                            <div>
+                                <p class="font-bold text-sm">${d.nome}</p>
+                                <p class="text-green-400 text-xs font-bold">R$ ${d.reais} ➔ ${d.fichas} F</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="recusarDeposito('${doc.id}', '${d.nome}', ${d.reais})" class="bg-red-700 hover:bg-red-600 px-3 py-1 rounded text-xs font-bold shadow transition border border-red-500">❌</button>
+                                <button onclick="aprovarDeposito('${doc.id}', '${d.uid}', ${d.fichas}, '${d.nome}', ${d.reais})" class="bg-green-600 hover:bg-green-500 px-4 py-1 rounded text-xs font-bold shadow transition">Aprovar</button>
+                            </div>
+                        </div>`;
                 });
             });
 
@@ -357,6 +367,13 @@
                     t.innerHTML += `<tr class="border-b border-gray-800 hover:bg-gray-800 transition"><td class="py-2">${formatarDataHora(l.data)}</td><td class="py-2 text-blue-400">${adminCurto}</td><td class="py-2"><span class="font-bold text-yellow-400">${l.acao}</span><br><span class="text-[8px] text-gray-400">${l.detalhes}</span></td></tr>`;
                 });
             });
+
+            function recusarDeposito(docId, nomeUser, reais) {
+            if(confirm(`❌ ATENÇÃO!\nDeseja RECUSAR o depósito de R$${reais} do jogador ${nomeUser}?`)) {
+                db.collection('depositos').doc(docId).update({ status: 'recusado' });
+                registrarLog("DEPÓSITO RECUSADO", `Rejeitou o pedido de R$${reais} de ${nomeUser}`);
+            }
+        }
 
             db.collection('partidas').where('status', '==', 'preparacao').onSnapshot(snap => {
                 const l = document.getElementById('lista-preparacao'); l.innerHTML = '';
