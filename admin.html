@@ -994,7 +994,7 @@
             document.getElementById('data-partida').value = ''; 
         }
         
-        function calcMkt(id, origem) { 
+function calcMkt(id) { 
             const elTotal = document.getElementById(`volTotal-${id}`);
             const elProbA = document.getElementById(`probA-${id}`);
             const elProbB = document.getElementById(`probB-${id}`);
@@ -1002,7 +1002,9 @@
             const elB = document.getElementById(`volB-${id}`);
             const elRisco = document.getElementById(`risco-${id}`);
             
-            let valTotal = parseFloat(elTotal.value) || 0;
+            let volTotal = parseFloat(elTotal.value) || 0;
+            let risco = parseFloat(elRisco.value) || 0;
+            
             let probA = parseFloat(elProbA.value) || 50;
             if(probA > 99) probA = 99; 
             if(probA < 1) probA = 1;
@@ -1010,45 +1012,29 @@
             let probB = 100 - probA; 
             elProbB.value = probB.toFixed(1); 
             
-            let phantomTotal = valTotal * 0.2;
-            let pA = Math.max(1, Math.floor(phantomTotal * (probA / 100)));
-            let pB = Math.max(1, Math.floor(phantomTotal * (probB / 100)));
-            let odds = simularOdd(pA, pB);
+            // 1. Calcula as Odds Iniciais (Baseado APENAS no Volume Esperado)
+            // Como o jogo não começou, o Fator de Diluição é 100%
+            let phantomA = Math.max(1, Math.floor((volTotal * 0.2) * (probA / 100)));
+            let phantomB = Math.max(1, Math.floor((volTotal * 0.2) * (probB / 100)));
+            let odds = simularOdd(phantomA, phantomB);
             let oddA_num = parseFloat(odds.oA);
             let oddB_num = parseFloat(odds.oB);
-            let valA = parseFloat(elA.value) || 0;
-            let valB = parseFloat(elB.value) || 0;
-            let risco = parseFloat(elRisco.value) || 0;
             
-            if (origem === 'total' || origem === 'prob') { 
-                risco = valTotal * RISK_MARGIN; 
-                valA = risco / (oddA_num - 1); 
-                valB = risco / (oddB_num - 1); 
-            } else if (origem === 'A') { 
-                risco = valA * (oddA_num - 1); 
-                valTotal = risco / RISK_MARGIN; 
-                valB = risco / (oddB_num - 1); 
-            } else if (origem === 'B') { 
-                risco = valB * (oddB_num - 1); 
-                valTotal = risco / RISK_MARGIN; 
-                valA = risco / (oddA_num - 1); 
-            } else if (origem === 'risco') { 
-                valTotal = risco / RISK_MARGIN; 
-                valA = risco / (oddA_num - 1); 
-                valB = risco / (oddB_num - 1); 
-            } 
+            // 2. Calcula os Limites Iniciais (Baseado APENAS no Risco)
+            // Limite = Risco / (Odd - 1)
+            let valA = risco / (oddA_num - 1); 
+            let valB = risco / (oddB_num - 1); 
             
             if (!isFinite(valA) || valA < 0) valA = 0; 
             if (!isFinite(valB) || valB < 0) valB = 0;
             
-            elTotal.value = Math.floor(valTotal); 
+            // Atualiza os valores na tela para você conferir antes de abrir
             elA.value = Math.floor(valA); 
             elB.value = Math.floor(valB); 
-            elRisco.value = Math.floor(risco); 
             document.getElementById(`oddA-${id}`).innerText = odds.oA; 
             document.getElementById(`oddB-${id}`).innerText = odds.oB; 
-            document.getElementById(`pA-${id}`).value = pA; 
-            document.getElementById(`pB-${id}`).value = pB; 
+            document.getElementById(`pA-${id}`).value = phantomA; 
+            document.getElementById(`pB-${id}`).value = phantomB; 
         }
         
         function salvarPesos(id) { 
