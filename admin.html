@@ -596,7 +596,6 @@
                             lucroHtml = `<span class="text-red-500 font-bold">Estornada</span>`;
                         }
 
-                        // NOVO: Botão de Desfazer
                         let btnDesfazer = p.status === 'finalizada' 
                             ? `<button onclick="desfazerPartida('${p.id}')" class="bg-yellow-700 hover:bg-yellow-600 px-3 py-2 rounded text-[9px] font-bold text-white uppercase shadow-md transition ml-1">⏪ Desfazer</button>` 
                             : '';
@@ -739,8 +738,9 @@
 
                         const nomeParaExcluir = nomeUser.replace(/['"]/g, "");
 
+                        // NOVO: Passando a ODD para a função de deletar abater do payout histórico
                         let btnExcluir = a.resultado === 'pendente' 
-                            ? `<button onclick="excluirApostaEspecifica('${a.id}', '${partidaId}', '${a.escolha}', ${a.valor}, '${nomeParaExcluir}')" class="bg-gray-700 hover:bg-red-700 px-2 py-1 rounded text-white text-[10px] transition border border-gray-600">🗑️</button>` 
+                            ? `<button onclick="excluirApostaEspecifica('${a.id}', '${partidaId}', '${a.escolha}', ${a.valor}, '${nomeParaExcluir}', '${a.oddTravada}')" class="bg-gray-700 hover:bg-red-700 px-2 py-1 rounded text-white text-[10px] transition border border-gray-600">🗑️</button>` 
                             : `<span class="text-gray-600">-</span>`;
                             
                         tb.innerHTML += `
@@ -758,11 +758,14 @@
             }
         }
 
-        async function excluirApostaEspecifica(apostaId, partidaId, escolha, valor, nomeUser) {
+        async function excluirApostaEspecifica(apostaId, partidaId, escolha, valor, nomeUser, oddTravada) {
             if(!confirm(`⚠️ DELETAR APOSTA DE ${valor} FICHAS?\nIsso vai remover a aposta e restaurar o volume da partida.\nConfirma?`)) return;
             
             const partidaRef = db.collection('partidas').doc(partidaId);
             
+            // Calcula qual era o lucro prometido dessa aposta para retirar do nosso caixa de dívidas
+            let lucroRemovido = Math.floor(valor * parseFloat(oddTravada));
+
             db.runTransaction(async (transaction) => {
                 const pDoc = await transaction.get(partidaRef);
                 if (!pDoc.exists) throw new Error("Partida não encontrada.");
@@ -772,6 +775,12 @@
                 let novoRealB = (p.realB || 0) - (escolha === 'B' ? valor : 0);
                 if (novoRealA < 0) novoRealA = 0;
                 if (novoRealB < 0) novoRealB = 0;
+
+                // Subtrai a dívida da casa
+                let novoPayoutA = (p.payoutA || 0) - (escolha === 'A' ? lucroRemovido : 0);
+                let novoPayoutB = (p.payoutB || 0) - (escolha === 'B' ? lucroRemovido : 0);
+                if (novoPayoutA < 0) novoPayoutA = 0;
+                if (novoPayoutB < 0) novoPayoutB = 0;
 
                 let volEsperado = p.volEsperado || 1;
                 let probA = p.probA || 50;
@@ -789,7 +798,9 @@
                     realA: novoRealA,
                     realB: novoRealB,
                     poolA: novoRealA + novoPhantomA,
-                    poolB: novoRealB + novoPhantomB
+                    poolB: novoRealB + novoPhantomB,
+                    payoutA: novoPayoutA,
+                    payoutB: novoPayoutB
                 });
             }).then(() => {
                 registrarLog("APOSTA CANCELADA", `Removeu aposta de ${valor}F feita por ${nomeUser}`);
@@ -804,7 +815,6 @@
             } 
         }
 
-        // NOVO: Função para desfazer um jogo encerrado errado
         async function desfazerPartida(id) {
             if(!confirm(`⏪ DESFAZER RESULTADO?\nIsso vai retirar o dinheiro pago aos vencedores, voltar as apostas para 'pendente' e reabrir o jogo no painel. Confirma?`)) return;
 
@@ -815,16 +825,13 @@
                 asSnap.forEach(doc => {
                     const a = doc.data();
                     if(a.resultado === 'ganhou') {
-                        // Tira o dinheiro da conta do cara que ganhou por engano
                         batch.set(db.collection('usuarios').doc(a.uid), {
                             saldo: firebase.firestore.FieldValue.increment(-a.premio)
                         }, { merge: true });
                     }
-                    // Volta o recibo dele pra pendente
                     batch.update(doc.ref, { resultado: 'pendente', premio: 0 });
                 });
 
-                // Tira a partida do Histórico e joga pra aba de Abertas
                 batch.update(db.collection('partidas').doc(id), {
                     status: 'aberta',
                     vencedor: firebase.firestore.FieldValue.delete(),
@@ -902,7 +909,8 @@
                 batch.update(doc.ref, { resultado: 'anulada' }); 
             });
             
-            batch.update(db.collection('partidas').doc(id), { status: 'anulada', lucroCasa: 0 }); 
+            // NOVO: Zera o Payout porque a casa não deve mais nada pra ninguém
+            batch.update(db.collection('partidas').doc(id), { status: 'anulada', lucroCasa: 0, payoutA: 0, payoutB: 0 }); 
             await batch.commit(); 
             registrarLog("PARTIDA ANULADA", `Anulou o jogo ${jogA} x ${jogB} e estornou fichas.`); 
             alert("Partida anulada e fichas devolvidas com sucesso.");
@@ -972,9 +980,11 @@
             
             if(!a || !b) return alert("Digite os nomes dos jogadores.");
             
+            // NOVO: Adiciona payout zerado na criação
             db.collection('partidas').add({ 
                 fase: f, jogA: a, jogB: b, dataJogo: dataP || null, 
                 poolA: 100, poolB: 100, risco: 500, realA: 0, realB: 0, 
+                payoutA: 0, payoutB: 0,
                 status: 'preparacao', probA: 50 
             });
             
