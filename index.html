@@ -206,7 +206,7 @@
             }
         });
 
-        // ================= MOTOR AMM (FADING LIQUIDITY) =================
+        // ================= MOTOR AMM BLINDADO =================
         function calcularDados(p) {
             let realA = p.realA || 0;
             let realB = p.realB || 0;
@@ -217,31 +217,37 @@
 
             let volReal = realA + realB;
             
-            // Fator de Diluição: Quanto mais perto do volume esperado, menor o dinheiro fantasma
+            // Fator de Diluição
             let fator = Math.max(0, 1 - (volReal / volEsperado));
 
-            // Calcula o dinheiro fantasma atualizado
+            // Fantasma Atualizado
             let phantomA = Math.max(1, Math.floor((volEsperado * 0.2) * (probA / 100) * fator));
             let phantomB = Math.max(1, Math.floor((volEsperado * 0.2) * (probB / 100) * fator));
 
-            // Pools efetivas (Dinheiro Real + Dinheiro Fantasma Sobrevivente)
             let poolA = realA + phantomA;
             let poolB = realB + phantomB;
             let totalPool = poolA + poolB;
 
-            // Calculando as Odds Exatas
+            // Odds Exatas
             let oddA_str = Math.max(1.01, (totalPool / (poolA * OVERROUND))).toFixed(2);
             let oddB_str = Math.max(1.01, (totalPool / (poolB * OVERROUND))).toFixed(2);
             
             let oddA_num = parseFloat(oddA_str);
             let oddB_num = parseFloat(oddB_str);
             
-            // Risco Dinâmico: A casa assume menos risco à medida que o jogo enche
+            // NOVO: Cálculo de Dívida Acumulada (Liability Real)
+            let payoutA = p.payoutA || 0;
+            let payoutB = p.payoutB || 0;
+            
+            let liabilityA = payoutA - volReal;
+            let liabilityB = payoutB - volReal;
+
+            // Risco Dinâmico
             let riscoDinamico = Math.floor(riscoBase * fator);
 
-            // Limite = (Risco Dinâmico + Dinheiro Real no Adversário) / (Odd - 1) - Dinheiro Real deste lado
-            let limA = Math.floor(((riscoDinamico + realB) / (oddA_num - 1)) - realA);
-            let limB = Math.floor(((riscoDinamico + realA) / (oddB_num - 1)) - realB);
+            // NOVO: A Fórmula Inquebrável de Limite
+            let limA = Math.floor((riscoDinamico - liabilityA) / (oddA_num - 1));
+            let limB = Math.floor((riscoDinamico - liabilityB) / (oddB_num - 1));
 
             if (!isFinite(limA) || limA < 0) limA = 0;
             if (!isFinite(limB) || limB < 0) limB = 0;
@@ -349,7 +355,7 @@
                     throw new Error("As apostas para esta partida estão encerradas.");
                 }
 
-                // 1. Recalcula a matemática em tempo real dentro do servidor
+                // 1. Recalcula a matemática com Payout
                 const c = calcularDados(p);
                 const limReais = escolha === 'A' ? c.limA : c.limB;
 
@@ -357,7 +363,6 @@
                     throw new Error(`O limite máximo para esta odd no momento é de ${limReais} Fichas. \nO mercado está se protegendo, aguarde mais dinheiro entrar do outro lado.`);
                 }
 
-                // 2. Calcula o novo cenário com Fading Liquidity
                 let novoRealA = (p.realA || 0) + (escolha === 'A' ? valor : 0);
                 let novoRealB = (p.realB || 0) + (escolha === 'B' ? valor : 0);
                 
@@ -374,7 +379,10 @@
                 const oddFinal = escolha === 'A' ? c.oddA : c.oddB;
                 const nomeEsc = escolha === 'A' ? p.jogA : p.jogB;
 
-                // 3. Executa as atualizações blindadas (Corrigindo o erro de permissão)
+                // 2. Calcula e salva o Payout Prometido (A Memória da Casa)
+                let novoPayoutA = (p.payoutA || 0) + (escolha === 'A' ? Math.floor(valor * parseFloat(oddFinal)) : 0);
+                let novoPayoutB = (p.payoutB || 0) + (escolha === 'B' ? Math.floor(valor * parseFloat(oddFinal)) : 0);
+
                 transaction.update(userRef, { 
                     saldo: dadosUsuario.saldo - valor, 
                     totalApostado: firebase.firestore.FieldValue.increment(valor) 
@@ -384,10 +392,11 @@
                     realA: novoRealA,
                     realB: novoRealB,
                     poolA: novoPoolA, 
-                    poolB: novoPoolB 
+                    poolB: novoPoolB,
+                    payoutA: novoPayoutA, 
+                    payoutB: novoPayoutB
                 });
 
-                // Cria o recibo da aposta
                 const novaApostaRef = db.collection('apostas').doc();
                 transaction.set(novaApostaRef, { 
                     uid: auth.currentUser.uid, 
