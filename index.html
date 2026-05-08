@@ -11,6 +11,7 @@
 </head>
 <body class="bg-gray-900 text-white font-sans antialiased pb-20">
 
+    <!-- MODAL DE DEPÓSITO -->
     <div id="modal-pix" class="hidden fixed inset-0 bg-black bg-opacity-80 z-[100] flex items-center justify-center p-4">
         <div class="bg-gray-800 p-6 rounded-2xl border border-gray-700 shadow-2xl w-full max-w-sm text-center relative">
             <button onclick="fecharPix()" class="absolute top-3 right-4 text-gray-400 hover:text-white font-bold text-xl">&times;</button>
@@ -37,6 +38,7 @@
         </div>
     </div>
 
+    <!-- TELA DE LOGIN -->
     <div id="tela-login" class="min-h-screen flex items-center justify-center p-4">
         <div class="bg-gray-800 p-8 rounded-2xl shadow-2xl w-full max-w-sm border border-gray-700">
             <h2 class="text-2xl font-bold text-green-400 mb-6 text-center">SWC-Bet</h2>
@@ -50,6 +52,7 @@
         </div>
     </div>
 
+    <!-- TELA PRINCIPAL -->
     <div id="tela-principal" class="hidden">
         <header class="bg-gray-800 p-4 shadow-md sticky top-0 z-50 flex justify-between items-center border-b border-gray-700">
             <h1 class="text-xl font-bold text-green-400">🎱 SWC-Bet</h1>
@@ -198,8 +201,10 @@
                         document.getElementById('nome-user').innerText = dadosUsuario.nome;
                         document.getElementById('saldo-user').innerText = dadosUsuario.saldo;
                     } else {
-                        const nomeNovo = prompt("⚠️ O sistema detectou que a sua conta passou por um reset.\n\nDigite seu Nome novamente para recriar o seu perfil:") || "Usuário Readmitido";
-                        db.collection('usuarios').doc(user.uid).set({ nome: nomeNovo, saldo: 0, totalApostado: 0 });
+                        // O BANCO SUMIU? BLOQUEIA E DESLOGA O CARA NA HORA.
+                        alert("⚠️ Erro de Cadastro: Sua conta não foi encontrada ou foi removida pelo Administrador.\n\nPor favor, entre em contato com o suporte.");
+                        auth.signOut();
+                        window.location.reload();
                     }
                 });
                 mudarFase('Oitavas');
