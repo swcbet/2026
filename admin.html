@@ -747,8 +747,11 @@
 
                         const nomeParaExcluir = nomeUser.replace(/['"]/g, "");
 
-                        let btnExcluir = a.resultado === 'pendente' 
-                            ? `<button onclick="excluirApostaEspecifica('${a.id}', '${partidaId}', '${a.escolha}', ${a.valor}, '${nomeParaExcluir}', '${a.oddTravada}')" class="bg-gray-700 hover:bg-red-700 px-2 py-1 rounded text-white text-[10px] transition border border-gray-600">🗑️</button>` 
+                        let btnAcoes = a.resultado === 'pendente' 
+                            ? `<div class="flex justify-center gap-1">
+                                 <button onclick="editarOddAposta('${a.id}', '${partidaId}', '${a.escolha}', ${a.valor}, '${a.oddTravada}', '${nomeParaExcluir}')" class="bg-gray-700 hover:bg-yellow-600 px-2 py-1 rounded text-white text-[10px] transition border border-gray-600" title="Editar Odd">✏️</button>
+                                 <button onclick="excluirApostaEspecifica('${a.id}', '${partidaId}', '${a.escolha}', ${a.valor}, '${nomeParaExcluir}', '${a.oddTravada}')" class="bg-gray-700 hover:bg-red-700 px-2 py-1 rounded text-white text-[10px] transition border border-gray-600" title="Excluir Aposta">🗑️</button>
+                               </div>` 
                             : `<span class="text-gray-600">-</span>`;
                             
                         tb.innerHTML += `
@@ -757,7 +760,7 @@
                                 <td class="py-3 text-center text-yellow-400 font-bold">${a.escolhaNome}</td>
                                 <td class="py-3 text-right font-mono">${a.valor} F</td>
                                 <td class="py-3 text-right font-mono">${a.oddTravada}</td>
-                                <td class="py-3 text-center">${btnExcluir}</td>
+                                <td class="py-3 text-center">${btnAcoes}</td>
                             </tr>`;
                     });
                 });
@@ -814,6 +817,60 @@
                 registrarLog("APOSTA CANCELADA", `Removeu aposta de ${valor}F feita por ${nomeUser}`);
                 alert("Aposta removida e mercado reajustado.");
             }).catch(err => alert("Erro ao deletar: " + err.message));
+        }
+
+        async function editarOddAposta(apostaId, partidaId, escolha, valor, oddAtual, nomeUser) {
+            let novaOddStr = prompt(`✏️ EDITAR ODD DE ${nomeUser}\n\nAposta: ${valor} Fichas\nOdd Atual: ${oddAtual}\n\nATENÇÃO: Se você baixar a odd, a dívida da casa diminui e os limites abrem.\n\nDigite a NOVA ODD (Ex: 2.50):`, oddAtual);
+            
+            if (!novaOddStr || novaOddStr.trim() === "" || novaOddStr === oddAtual) return;
+            
+            let novaOdd = parseFloat(novaOddStr.replace(',', '.'));
+            if (isNaN(novaOdd) || novaOdd <= 1) return alert("❌ Odd inválida! Tem que ser maior que 1.00");
+
+            let oddAtualNum = parseFloat(oddAtual);
+            
+            // O Segredo: Calcula a diferença da dívida. 
+            // Se você baixou a odd de 110 para 5, a diferença será um número enorme negativo (tirando o peso das costas da casa)
+            let lucroAntigo = Math.floor(valor * oddAtualNum);
+            let lucroNovo = Math.floor(valor * novaOdd);
+            let diferenca = lucroNovo - lucroAntigo; 
+
+            const partidaRef = db.collection('partidas').doc(partidaId);
+            const apostaRef = db.collection('apostas').doc(apostaId);
+
+            try {
+                await db.runTransaction(async (transaction) => {
+                    const pDoc = await transaction.get(partidaRef);
+                    if (!pDoc.exists) throw new Error("Partida sumiu.");
+                    
+                    const p = pDoc.data();
+                    
+                    let novoPayoutA = p.payoutA || 0;
+                    let novoPayoutB = p.payoutB || 0;
+
+                    if (escolha === 'A') {
+                        novoPayoutA += diferenca;
+                        if (novoPayoutA < 0) novoPayoutA = 0;
+                    } else {
+                        novoPayoutB += diferenca;
+                        if (novoPayoutB < 0) novoPayoutB = 0;
+                    }
+
+                    // 1. Atualiza o bilhete do jogador
+                    transaction.update(apostaRef, { oddTravada: novaOdd.toFixed(2) });
+                    
+                    // 2. Atualiza a dívida da banca (Isso destrava os limites!)
+                    transaction.update(partidaRef, { 
+                        payoutA: novoPayoutA,
+                        payoutB: novoPayoutB
+                    });
+                });
+
+                registrarLog("ODD ALTERADA", `Mudou a odd do bilhete de ${nomeUser} de ${oddAtual} para ${novaOdd.toFixed(2)}`);
+                alert("✅ Odd reajustada! O mercado recalcula os limites agora mesmo.");
+            } catch (err) {
+                alert("❌ Erro ao editar a odd: " + err.message);
+            }
         }
 
         function bloquearApostas(id) { 
