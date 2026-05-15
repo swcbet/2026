@@ -559,16 +559,20 @@
                         let nomeB_seguro = (p.jogB || '').replace(/['"]/g, "").trim();
 
                         let ajusteAoVivo = p.status === 'aberta' ? `
-                            <div class="bg-gray-800 p-2 rounded mb-3 border border-gray-600 flex justify-between gap-2 items-end shadow-inner">
-                                <div class="flex-1 text-left">
-                                    <label class="text-[9px] text-gray-400 block mb-1 uppercase tracking-wider">Vol. Esperado</label>
-                                    <input type="number" id="live-vol-${p.id}" value="${p.volEsperado || 0}" class="w-full p-1 bg-gray-900 rounded text-xs text-white border border-gray-700 text-center focus:border-blue-500 outline-none">
+                            <div class="bg-gray-800 p-3 rounded mb-3 border border-gray-600 grid grid-cols-3 gap-2 items-end shadow-inner">
+                                <div class="text-left">
+                                    <label class="text-[9px] text-gray-400 block mb-1 uppercase tracking-wider font-bold">Vol. Esp.</label>
+                                    <input type="number" id="live-vol-${p.id}" value="${p.volEsperado || 0}" class="w-full p-2 bg-gray-900 rounded text-xs text-white border border-gray-700 text-center focus:border-blue-500 outline-none">
                                 </div>
-                                <div class="flex-1 text-left">
-                                    <label class="text-[9px] text-yellow-500 block mb-1 uppercase tracking-wider">Risco (Liab)</label>
-                                    <input type="number" id="live-risco-${p.id}" value="${p.risco || 0}" class="w-full p-1 bg-gray-900 rounded text-xs text-yellow-400 border border-yellow-800 text-center focus:border-yellow-500 outline-none">
+                                <div class="text-left">
+                                    <label class="text-[9px] text-blue-400 block mb-1 uppercase tracking-wider font-bold">Peso A (%)</label>
+                                    <input type="number" id="live-probA-${p.id}" value="${p.probA || 50}" class="w-full p-2 bg-gray-900 rounded text-xs text-blue-400 border border-blue-800 text-center focus:border-blue-500 outline-none">
                                 </div>
-                                <button onclick="salvarAjusteAoVivo('${p.id}', ${p.probA || 50}, '${nomeA_seguro} x ${nomeB_seguro}', ${p.realA || 0}, ${p.realB || 0})" id="btn-live-${p.id}" class="bg-blue-600 hover:bg-blue-500 text-white font-bold rounded px-3 py-1 text-[10px] h-[26px] transition">SALVAR</button>
+                                <div class="text-left">
+                                    <label class="text-[9px] text-yellow-500 block mb-1 uppercase tracking-wider font-bold">Risco (Liab)</label>
+                                    <input type="number" id="live-risco-${p.id}" value="${p.risco || 0}" class="w-full p-2 bg-gray-900 rounded text-xs text-yellow-400 border border-yellow-800 text-center focus:border-yellow-500 outline-none">
+                                </div>
+                                <button onclick="salvarAjusteAoVivo('${p.id}', '${nomeA_seguro} x ${nomeB_seguro}', ${p.realA || 0}, ${p.realB || 0})" id="btn-live-${p.id}" class="col-span-3 bg-blue-600 hover:bg-blue-500 text-white font-black tracking-widest rounded py-2 text-[10px] transition mt-1 shadow-md">FORÇAR NOVAS ODDS</button>
                             </div>` : '';
 
                         lEncerrar.innerHTML += `
@@ -653,34 +657,39 @@
             }
         }
 
-        function salvarAjusteAoVivo(id, probA, nomeJogo, realA, realB) {
+        function salvarAjusteAoVivo(id, nomeJogo, realA, realB) {
             const novoVol = parseInt(document.getElementById(`live-vol-${id}`).value) || 1; 
             const novoRisco = parseInt(document.getElementById(`live-risco-${id}`).value) || 0;
+            let novaProbA = parseInt(document.getElementById(`live-probA-${id}`).value) || 50;
             
-            let probB = 100 - probA;
+            if(novaProbA > 99) novaProbA = 99; 
+            if(novaProbA < 1) novaProbA = 1;
+            
+            let probB = 100 - novaProbA;
             let volReal = realA + realB;
             
             let fator = Math.max(0, 1 - (volReal / novoVol));
             
-            let phantomA = Math.max(1, Math.floor((novoVol * 0.2) * (probA / 100) * fator));
+            let phantomA = Math.max(1, Math.floor((novoVol * 0.2) * (novaProbA / 100) * fator));
             let phantomB = Math.max(1, Math.floor((novoVol * 0.2) * (probB / 100) * fator));
             
             db.collection('partidas').doc(id).update({ 
                 volEsperado: novoVol, 
-                risco: novoRisco, 
+                risco: novoRisco,
+                probA: novaProbA, 
                 poolA: realA + phantomA, 
                 poolB: realB + phantomB 
             }).then(() => {
                 const btn = document.getElementById(`btn-live-${id}`);
                 if(btn) { 
-                    btn.innerText = "✓"; 
+                    btn.innerText = "✓ ODDS ATUALIZADAS"; 
                     btn.classList.replace('bg-blue-600', 'bg-green-600'); 
                     setTimeout(() => { 
-                        btn.innerText = "SALVAR"; 
+                        btn.innerText = "FORÇAR NOVAS ODDS"; 
                         btn.classList.replace('bg-green-600', 'bg-blue-600'); 
-                    }, 1500); 
+                    }, 2000); 
                 }
-                registrarLog("AJUSTE AO VIVO", `Injetou liquidez em ${nomeJogo} (Vol: ${novoVol}, Risco: ${novoRisco})`);
+                registrarLog("AJUSTE DE ODD AO VIVO", `Injetou liquidez em ${nomeJogo} (Vol: ${novoVol}, Peso: ${novaProbA}%, Risco: ${novoRisco})`);
             }).catch(err => alert("Erro ao atualizar: " + err.message));
         }
 
